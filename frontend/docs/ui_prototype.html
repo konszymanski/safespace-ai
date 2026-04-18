@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafetyNet AI | UI Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+        .chat-height { height: calc(100vh - 180px); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
+            <div class="p-6">
+                <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-indigo-600 rounded-full"></span> SafetyNet
+                </h1>
+            </div>
+            <nav class="flex-1 px-4 space-y-2">
+                <a href="#" class="flex items-center gap-3 p-3 bg-indigo-50 text-indigo-700 rounded-lg font-medium">
+                    <span>💬</span> Czat wsparcia
+                </a>
+                <a href="#" class="flex items-center gap-3 p-3 text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                    <span>📊</span> Analiza nastroju
+                </a>
+                <a href="#" class="flex items-center gap-3 p-3 text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                    <span>📍</span> Znajdź pomoc
+                </a>
+            </nav>
+            <div class="p-4 border-t border-slate-100">
+                <div class="bg-slate-50 p-3 rounded-xl text-xs text-slate-500">
+                    Pamiętaj: AI nie zastępuje profesjonalnej terapii.
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+            
+            <section class="flex-1 flex flex-col bg-white">
+                <header class="p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h2 class="font-semibold text-slate-700">Rozmowa z AI</h2>
+                    <span class="text-xs text-green-500 flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span> Połączono
+                    </span>
+                </header>
+
+                <div id="chat-window" class="chat-height overflow-y-auto p-6 space-y-4">
+                    <div class="flex justify-start">
+                        <div class="bg-slate-100 p-4 rounded-2xl rounded-bl-none max-w-[80%] text-sm">
+                            Witaj. Jestem tu, aby Cię wysłuchać w bezpieczny sposób. Jak się dziś czujesz?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-slate-100">
+                    <form id="chat-form" class="flex gap-2">
+                        <input type="text" id="user-input" placeholder="Opisz swoje emocje..." 
+                            class="flex-1 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <button class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition">
+                            Wyślij
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="w-full md:w-80 bg-slate-50 border-l border-slate-200 p-6 overflow-y-auto">
+                <h3 class="font-bold text-slate-800 mb-6">Twój fundament</h3>
+                
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                    <p class="text-xs font-semibold text-slate-400 uppercase mb-4 tracking-tight">Balans emocjonalny</p>
+                    <canvas id="radarChart"></canvas>
+                </div>
+
+                <div id="emergency-card" class="hidden bg-red-50 border border-red-100 p-4 rounded-2xl">
+                    <p class="text-red-600 font-bold text-sm mb-1">Wykryto wysokie napięcie</p>
+                    <p class="text-red-500 text-xs mb-3">Zalecamy kontakt ze specjalistą.</p>
+                    <a href="tel:116123" class="block w-full text-center bg-red-600 text-white py-2 rounded-xl text-sm font-bold">Zadzwoń: 116 123</a>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // --- LOGIKA CZATU ---
+        const chatForm = document.getElementById('chat-form');
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const emergencyCard = document.getElementById('emergency-card');
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Dodaj wiadomość użytkownika
+            addMessage(text, 'user');
+            userInput.value = '';
+
+            // Symulacja analizy (suicidal check)
+            setTimeout(() => {
+                if (text.toLowerCase().includes('zabić') || text.toLowerCase().includes('samobójstwo')) {
+                    addMessage("Słyszę, że przechodzisz przez bardzo trudny czas. Proszę, porozmawiaj z kimś, kto może Ci pomóc natychmiast.", 'bot');
+                    emergencyCard.classList.remove('hidden');
+                } else {
+                    addMessage("Rozumiem. Czy chcesz opowiedzieć o tym coś więcej?", 'bot');
+                }
+            }, 600);
+        });
+
+        function addMessage(text, role) {
+            const div = document.createElement('div');
+            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `
+                <div class="${role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-100 text-slate-800 rounded-bl-none'} p-4 rounded-2xl max-w-[80%] text-sm shadow-sm animate-fade-in">
+                    ${text}
+                </div>
+            `;
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // --- RADAR CHART (Chart.js) ---
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Spokój', 'Energia', 'Nadzieja', 'Sen', 'Skupienie'],
+                datasets: [{
+                    label: 'Aktualny stan',
+                    data: [65, 40, 50, 80, 45],
+                    fill: true,
+                    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                    borderColor: 'rgb(79, 70, 229)',
+                    pointBackgroundColor: 'rgb(79, 70, 229)',
+                }]
+            },
+            options: {
+                elements: { line: { borderWidth: 2 } },
+                scales: { r: { ticks: { display: false }, grid: { color: '#f1f5f9' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // --- UTILS ---
+        function quickExit() {
+            window.location.href = 'https://www.google.com';
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') quickExit();
+        });
+    </script>
+</body>
+</html>
