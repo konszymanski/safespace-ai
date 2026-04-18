@@ -1,0 +1,56 @@
+{
+  "language": {
+    "label": "Language",
+    "pl": "Polski",
+    "en": "English",
+    "uk": "Українська"
+  },
+  "header": {
+    "title": "Safe Space",
+    "tagline": "anonymous · no trace",
+    "clear": "Clear",
+    "clearAria": "Clear session data",
+    "quickExit": "Quick exit",
+    "quickExitAria": "Quick exit — leave the page immediately"
+  },
+  "disclaimer": {
+    "kicker": "Safety contract",
+    "title": "Before we start talking",
+    "notMedical": "This is not medical or psychological advice.",
+    "intro": "I'm a space for conversation and emotional support — I don't replace a therapist, doctor or emergency services.",
+    "needHelpNow": "If you need help right now",
+    "privacyNote": "Your conversation lives only in this browser tab. Once you close it or clear data — it's gone for good.",
+    "consent": "I understand and accept the terms above. I know that in a life-threatening situation I will call the emergency number <strong>{{emergency}}</strong>.",
+    "consentAria": "I accept the terms",
+    "accept": "I agree — enter the safe space"
+  },
+  "chat": {
+    "greeting": "Hi. I'm here to listen. There's no rush — write however feels comfortable. What brought you here today?",
+    "placeholder": "Write how you feel…",
+    "inputAria": "Type a message",
+    "send": "Send",
+    "footerNote": "Your conversation stays only in this tab. Close it = it disappears.",
+    "thinking": "AI is thinking",
+    "thinkingAria": "AI is thinking",
+    "cleared": "Session cleared",
+    "clearedDesc": "All messages have been wiped from this tab.",
+    "error": "Something went wrong. Please try again."
+  },
+  "mock": {
+    "replies": [
+      "I hear you. What you're describing sounds really heavy. Would you like to tell me more about what you're feeling right now?",
+      "Thank you for telling me this. You are safe here. What weighs on you the most today?",
+      "I understand. Sometimes just naming what's inside takes enormous courage. What do you feel in your body right now?",
+      "I'm here with you in this conversation. Remember — if thoughts of harming yourself appear, you can call your local emergency number right away."
+    ],
+    "crisis": "What you're writing matters deeply to me. Your life matters. Please call {{emergency}} or {{trustline}} (helpline) right now. You can also press the “Quick exit” button if you need to leave this page."
+  },
+  "emergency": {
+    "country": "United Kingdom / International",
+    "lines": [
+      { "number": "112 / 999", "label": "emergency number (life-threatening situations)" },
+      { "number": "116 123", "label": "Samaritans — 24/7 emotional support" },
+      { "number": "Text SHOUT to 85258", "label": "UK crisis text line" }
+    ]
+  }
+}
