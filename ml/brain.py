@@ -11,7 +11,7 @@ os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 class MentalHealthBrain:
-    def __init__(self, model_path='ml/local_models/safety_model.pkl'):
+    def __init__(self, model_path='local_models/safety_model.pkl'):
         # Inicjalizacja klasy - wczytywanie wszystkiego do RAM-u na starcie
         print("1/2 Loading Stable Safety Model...")
         if not os.path.exists(model_path):  # Sprawdzenie czy plik modelu w ogóle istnieje
