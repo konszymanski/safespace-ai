@@ -13,19 +13,26 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class SafetyService:
-    def __init__(self, model_path='../ml/local_models/safety_model.pkl'):
+    def __init__(self, model_path: str | None = None):
         """
         Zmergowany serwis bezpieczeństwa.
         Łączy klasyfikator emocji (Transformer) z modelem ryzyka (Random Forest).
         """
         print("--- Initializing New Safety Service ---")
 
+        if model_path is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            model_path = os.path.normpath(
+                os.path.join(base_dir, "..", "ml", "local_models", "safety_model.pkl")
+            )
+
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model pkl nie znaleziony w: {model_path}")
 
         with open(model_path, 'rb') as f:
             self.safety_model = pickle.load(f)
-        print("✓ Safety Model (RandomForest) loaded.")
+        # ASCII — unika UnicodeEncodeError na konsoli Windows (cp1250) przy print.
+        print("[OK] Safety Model (RandomForest) loaded.")
 
         self.emotion_classifier = pipeline(
             "text-classification",
@@ -33,7 +40,7 @@ class SafetyService:
             top_k=None,
             device=-1
         )
-        print("✓ Emotion Transformer loaded.")
+        print("[OK] Emotion Transformer loaded.")
 
         self.phq9_map = {
             "anhedonia": ["interest", "pleasure", "hobbies", "bored", "nothing feels good", "don't care"],
