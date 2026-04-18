@@ -1,22 +1,49 @@
-version: '3.8'
+# Uruchom z katalogu głównego repo (tam jest `docs/` i `backend/`).
+# Zmienne jak GEMINI_*: plik `backend/.env` (szablon `backend/.env.example`) — ten sam co przy lokalnym uvicorn.
+#
+#   docker compose up --build
+#
+# Backend: http://localhost:8001 (zgodne z domyślnym API we froncie `mockApi.ts`)
+# Frontend: http://localhost:5173
 
 services:
   backend:
-    build: ./backend
-    container_name: fastapi_backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: fiatpandas-backend
     ports:
-      - "8000:8000"
+      - "8001:8001"
+    env_file:
+      - ./backend/.env
+    environment:
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface/hub
     volumes:
+      # Kod z hosta (dev); obraz i tak instaluje zależności w warstwie RUN
       - ./backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      # Prompt systemowy jest w repo pod `docs/`, nie w `backend/` — montuj osobno
+      - ./docs/prompts:/app/docs/prompts:ro
+      # Model HF ~ pierwsze uruchomienie; kolejne starty szybsze
+      - huggingface_cache:/app/.cache/huggingface
+    command: >
+      uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
   frontend:
-    build: ./frontend
-    container_name: streamlit_frontend
-    ports:
-      - "8501:8501"
+    image: node:22-bookworm-slim
+    container_name: fiatpandas-frontend
+    working_dir: /app
+    environment:
+      VITE_API_BASE_URL: http://localhost:8001
     volumes:
       - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     depends_on:
       - backend
-    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+
+volumes:
+  huggingface_cache:
+  frontend_node_modules:

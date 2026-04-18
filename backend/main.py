@@ -50,6 +50,14 @@ POSITIVE_MESSAGE_DECREMENT = 0.2
 USE_MOCK = False
 # Poniżej tego progu pomijamy get_full_analysis (dziesiątki wywołań RF + emocje na wariantach tekstu).
 XAI_RISK_THRESHOLD = 0.3
+# Tekst pod pole `safety_insights` — tłumaczy warstwę **API (main)**, bez duplikowania inferencji z SafetyService.
+SAFETY_INSIGHTS_FLOW_PL = [
+    "SafetyService.analyze() daje risk_score; run_local_classifier mapuje go na prob_1 (prob_0 = 1 − prob_1).",
+    "prediction = 1, gdy prob_1 ≥ 0.5; confidence to prob_1 przy klasie 1, inaczej prob_0.",
+    "clinical_metrics (symptomy, phq9_est) pochodzą z tej samej ścieżki analyze — w JSON jako classifier.clinical_metrics.",
+    "classifier.xai (jeśli nie null) tylko gdy prob_1 ≥ XAI_RISK_THRESHOLD — osobna analiza perturbacyjna.",
+    "Crisis points i safety_mode w /chat liczymy w main z prob_1, progów LEVEL_* / INSTANT_KILL i historii sesji.",
+]
 # Default assistant persona (always in the composed prompt; frontend may add system_prompt in English).
 DEFAULT_CBT_PROMPT = (
     "You are a supportive assistant grounded in cognitive behavioural therapy (CBT). "
@@ -64,16 +72,16 @@ LEVEL_1_SECRET_INSTRUCTION = (
     "Prioritize empathy, validation, and grounding techniques."
 )
 
-# Komunikaty zwracane użytkownikowi przy eskalacji (zamiast normalnej odpowiedzi Gemini).
+# User-facing assistant text when escalating instead of a normal Gemini reply.
 EMERGENCY_MESSAGE = (
-    "Widzę, że możesz przeżywać bardzo trudny moment. "
-    "Jeśli czujesz zagrożenie życia lub zdrowia, zadzwoń pod 112. "
-    "Możesz też skontaktować się z telefonem wsparcia 116 123."
+    "It sounds like you may be going through an extremely difficult time. "
+    "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
+    "In Poland you can also reach the support line 116 123."
 )
 LEVEL_2_MESSAGE = (
-    "Nasza analiza wskazuje, że możesz potrzebować rozmowy z człowiekiem. "
-    "Jeśli czujesz zagrożenie życia lub zdrowia, zadzwoń pod 112. "
-    "Możesz też skontaktować się z telefonem wsparcia 116 123."
+    "Our screening suggests you might benefit from talking to a person soon. "
+    "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
+    "In Poland you can also reach the support line 116 123."
 )
 
 # --- Stan sesji w RAM (session_id -> punkty kryzysowe + historia wiadomości dla kontekstu Gemini) ---
@@ -84,23 +92,23 @@ safety_service: SafetyService | None = None
 safety_service_error: str | None = None
 xai_service: XAIService | None = None
 
-print("Ładowanie SafetyService...")
+print("Loading SafetyService...")
 try:
     safety_service = SafetyService()
     safety_service_error = None
-    print("SafetyService gotowy!")
-    # XAI tylko opakowuje ten sam SafetyService (leave-one-word-out na risk_score); bez osobnego modelu.
+    print("SafetyService ready.")
+    # XAI wraps the same SafetyService (leave-one-word-out on risk_score); no separate model.
     try:
         xai_service = XAIService(safety_service)
-        print("XAIService gotowy!")
+        print("XAIService ready.")
     except Exception as xai_exc:
         xai_service = None
-        print(f"XAIService niedostępny (czat działa bez XAI): {xai_exc}")
+        print(f"XAIService unavailable (chat continues without XAI): {xai_exc}")
 except Exception as exc:
     safety_service = None
     xai_service = None
     safety_service_error = str(exc)
-    print(f"Błąd inicjalizacji SafetyService: {safety_service_error}")
+    print(f"SafetyService initialization failed: {safety_service_error}")
 
 
 # --- Schematy wejścia API (walidacja Pydantic) ---
@@ -109,12 +117,35 @@ class UserMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, description="Wiadomość użytkownika")
+    message: str = Field(..., min_length=1, description="User message text")
     session_id: str = Field(
-        ..., min_length=1, description="Identyfikator rozmowy/sesji użytkownika"
+        ..., min_length=1, description="Conversation / session identifier"
     )
     system_prompt: str | None = Field(
-        default=None, description="Opcjonalny prompt systemowy dla Gemini"
+        default=None, description="Optional system prompt for Gemini (e.g. from frontend)"
+    )
+    include_safety_insights: bool = Field(
+        default=False,
+        description="If true, response includes safety_insights (same snapshot as run_local_classifier; no extra inference).",
+    )
+
+
+class SafetyInsightsRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Text to inspect (no session persistence)")
+
+
+class CrisisSimulateRequest(BaseModel):
+    """Jak jedna tura /chat pod kątem crisis points, ale bez historii czatu i bez Gemini."""
+
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        description="Stable test session id — same value accumulates total_risk_score.",
+    )
+    message: str = Field(..., min_length=1, description="User message text")
+    include_safety_insights: bool = Field(
+        default=False,
+        description="If true, include safety_insights (same shape as /chat).",
     )
 
 
@@ -127,7 +158,7 @@ def _analyze_message_for_classifier(message: str) -> tuple[dict[str, Any], dict[
     podnoszące risk po usunięciu — to NIE zmienia progów, tylko wzbogaca JSON dla frontu/diagnozy.
     """
     if safety_service is None:
-        raise RuntimeError("SafetyService niedostępny")
+        raise RuntimeError("SafetyService unavailable")
 
     analysis = safety_service.analyze(message)
     risk_score = float(analysis.get("risk_score", 0.0))
@@ -160,7 +191,8 @@ async def run_local_classifier(message: str) -> dict:
             "confidence": confidence,
             "prob_0": max(0.0, min(1.0, prob_0)),
             "prob_1": max(0.0, min(1.0, prob_1)),
-            "explanation": "Wynik mockowy (USE_MOCK=True).",
+            "explanation": "Mock classifier result (USE_MOCK=True).",
+            "clinical_metrics": {"symptoms": [], "phq9_est": 0},
             "xai": None,
         }
 
@@ -168,8 +200,8 @@ async def run_local_classifier(message: str) -> dict:
         raise HTTPException(
             status_code=500,
             detail=(
-                "SafetyService niedostępny. "
-                f"Szczegóły: {safety_service_error or 'nieznany błąd'}"
+                "SafetyService unavailable. "
+                f"Details: {safety_service_error or 'unknown error'}"
             ),
         )
 
@@ -203,6 +235,32 @@ async def run_local_classifier(message: str) -> dict:
     }
 
 
+def build_safety_insights(classifier_result: dict[str, Any], text: str) -> dict[str, Any]:
+    """Podgląd testowy wyłącznie z pól już policzonych w run_local_classifier (jedna inferencja)."""
+    return {
+        "text_preview": (text or "")[:240],
+        "flow_steps_pl": SAFETY_INSIGHTS_FLOW_PL,
+        "classifier_snapshot": {
+            "provider": classifier_result.get("provider"),
+            "prediction": classifier_result.get("prediction"),
+            "prob_0": classifier_result.get("prob_0"),
+            "prob_1": classifier_result.get("prob_1"),
+            "confidence": classifier_result.get("confidence"),
+            "explanation": classifier_result.get("explanation"),
+            "clinical_metrics": classifier_result.get("clinical_metrics"),
+            "xai": classifier_result.get("xai"),
+        },
+        "thresholds_used_in_main": {
+            "class_1_if_prob_1_ge": 0.5,
+            "xai_if_prob_1_ge": XAI_RISK_THRESHOLD,
+            "instant_kill_if_prob_1_gt": INSTANT_KILL_THRESHOLD,
+            "level_1_total_risk_gt": LEVEL_1_THRESHOLD,
+            "level_2_total_risk_gt": LEVEL_2_THRESHOLD,
+            "positive_delta_if_prob_0_ge": POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD,
+        },
+    }
+
+
 def calculate_crisis_points_delta(
     prediction: int,
     confidence: float,
@@ -213,8 +271,8 @@ def calculate_crisis_points_delta(
     # Dla klasy 1 dodajemy score, dla pewnej klasy 0 odejmujemy małą stałą.
     if prediction == 1:
         return max(0.0, min(1.0, prob_1))
-    # prediction==0 => confidence == prob_0 (pewność „brak wysokiego ryzyka”).
-    # Tylko przy wysokiej pewności 0 odejmujemy punkty — żeby jedna „miła” wiadomość nie zerowała całej historii.
+    # prediction==0 => confidence is prob_0 (confidence in “low risk”).
+    # Only subtract points when class-0 confidence is high — so one “fine” message does not wipe history.
     if prediction == 0 and confidence >= POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD:
         return -POSITIVE_MESSAGE_DECREMENT
     return 0.0
@@ -224,7 +282,7 @@ def update_session_crisis_points(
     session_id: str,
     delta: float,
 ) -> dict[str, Any]:
-    """Aktualizuje licznik wiadomości, historię delt i sumę crisis points (nie schodzi poniżej 0)."""
+    """Updates messages_seen, delta history, and total_risk_score (floored at 0)."""
     state = session_memory.get(
         session_id,
         {
@@ -243,7 +301,7 @@ def update_session_crisis_points(
 
 
 def ensure_session_state(session_id: str) -> dict[str, Any]:
-    """Tworzy lub zwraca stan sesji; gwarantuje istnienie listy chat_history."""
+    """Creates or returns session state; ensures chat_history list exists."""
     state = session_memory.get(
         session_id,
         {
@@ -259,7 +317,7 @@ def ensure_session_state(session_id: str) -> dict[str, Any]:
 
 
 def append_chat_message(session_id: str, role: str, content: str) -> None:
-    """Dopisuje wiadomość user/assistant do chat_history (kontekst dla kolejnych wywołań Gemini)."""
+    """Appends a user/assistant message to chat_history (context for later Gemini calls)."""
     state = ensure_session_state(session_id)
     state["chat_history"].append({"role": role, "content": content})
 
@@ -326,12 +384,95 @@ def predict_emotion(message: UserMessage):
         raise HTTPException(
             status_code=500,
             detail=(
-                "SafetyService niedostępny. "
-                f"Szczegóły: {safety_service_error or 'nieznany błąd'}"
+                "SafetyService unavailable. "
+                f"Details: {safety_service_error or 'unknown error'}"
             ),
         )
     analysis = safety_service.analyze(message.text)
     return {"status": "success", "classifier": analysis}
+
+
+@app.post("/debug/safety-insights")
+async def debug_safety_insights(body: SafetyInsightsRequest):
+    """
+    Ten sam snapshot co przy include_safety_insights w /chat: z jednego run_local_classifier (bez Gemini, bez sesji).
+    """
+    if safety_service is None and not USE_MOCK:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "SafetyService unavailable. "
+                f"Details: {safety_service_error or 'unknown error'}"
+            ),
+        )
+    classifier = await run_local_classifier(body.text)
+    return {
+        "status": "success",
+        "safety_insights": build_safety_insights(classifier, body.text),
+    }
+
+
+@app.post("/debug/crisis-simulate")
+async def debug_crisis_simulate(body: CrisisSimulateRequest):
+    """
+    Kumulacja jak w /chat: run_local_classifier → crisis_delta → update_session_crisis_points.
+    Nie dopisuje do chat_history, nie woła Gemini — tylko licznik sesji (użyj osobnego session_id niż produkcyjny czat).
+    """
+    if safety_service is None and not USE_MOCK:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "SafetyService unavailable. "
+                f"Details: {safety_service_error or 'unknown error'}"
+            ),
+        )
+    ensure_session_state(body.session_id)
+
+    classifier = await run_local_classifier(body.message)
+    prediction = int(classifier["prediction"])
+    confidence = float(classifier["confidence"])
+    prob_1 = float(classifier["prob_1"])
+    crisis_delta = calculate_crisis_points_delta(prediction, confidence, prob_1)
+    session_state = update_session_crisis_points(body.session_id, crisis_delta)
+
+    out: dict[str, Any] = {
+        "session_id": body.session_id,
+        "crisis_delta": crisis_delta,
+        "total_risk_score": float(session_state["total_risk_score"]),
+        "crisis_points_history": list(session_state["crisis_points_history"]),
+        "messages_seen": int(session_state["messages_seen"]),
+        "classifier": {
+            "prediction": prediction,
+            "confidence": confidence,
+            "prob_0": float(classifier["prob_0"]),
+            "prob_1": prob_1,
+            "explanation": classifier.get("explanation"),
+            "clinical_metrics": classifier.get("clinical_metrics", {}),
+            "xai": classifier.get("xai"),
+        },
+    }
+    if body.include_safety_insights:
+        out["safety_insights"] = build_safety_insights(classifier, body.message)
+    return {"status": "success", **out}
+
+
+@app.get("/debug/crisis-state/{session_id}")
+def debug_crisis_state(session_id: str):
+    """Odczyt aktualnej sumy i historii delt bez nowej wiadomości (np. między krokami symulacji)."""
+    state = session_memory.get(session_id)
+    if state is None:
+        return {
+            "session_id": session_id,
+            "total_risk_score": 0.0,
+            "crisis_points_history": [],
+            "messages_seen": 0,
+        }
+    return {
+        "session_id": session_id,
+        "total_risk_score": float(state.get("total_risk_score", 0.0)),
+        "crisis_points_history": list(state.get("crisis_points_history", [])),
+        "messages_seen": int(state.get("messages_seen", 0)),
+    }
 
 
 @app.post("/chat")
@@ -394,7 +535,11 @@ async def chat(request: ChatRequest):
     # Odpowiedź asystenta (także komunikaty blokady) trafia do historii na kolejne tury.
     append_chat_message(request.session_id, "assistant", assistant_reply)
 
-    return {
+    safety_insights_payload: dict[str, Any] | None = None
+    if request.include_safety_insights:
+        safety_insights_payload = build_safety_insights(classifier_result, request.message)
+
+    out: dict[str, Any] = {
         "session_id": request.session_id,
         "assistant_reply": assistant_reply,
         "safety_mode": safety_mode,
@@ -420,6 +565,9 @@ async def chat(request: ChatRequest):
             "history_length": len(ensure_session_state(request.session_id)["chat_history"]),
         },
     }
+    if safety_insights_payload is not None:
+        out["safety_insights"] = safety_insights_payload
+    return out
 
 
 # Opcjonalny health check — odkomentuj jeśli chcesz GET / zamiast tylko /docs.
