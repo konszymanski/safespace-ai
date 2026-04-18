@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import ChatBubble from "./ChatBubble";
 import ChatComposer from "./ChatComposer";
@@ -10,28 +11,38 @@ interface ChatViewProps {
   shreddingTick: number;
 }
 
+// Wybiera losowe pytanie startowe z bazy ~36 uniwersalnych otwarć
+const pickStarter = (t: TFunction): string => {
+  const list = (t("starters", { returnObjects: true }) as unknown) as string[];
+  if (!Array.isArray(list) || list.length === 0) {
+    return t("chat.greeting");
+  }
+  return list[Math.floor(Math.random() * list.length)];
+};
+
 const ChatView = ({ shreddingTick }: ChatViewProps) => {
   const { t, i18n } = useTranslation();
 
+  // Pierwsze pytanie wybierane raz przy inicjalizacji widoku
   const initialMessage = useMemo<ChatMessage>(
-    () => ({ role: "assistant", content: t("chat.greeting") }),
-    [t, i18n.language],
+    () => ({ role: "assistant", content: pickStarter(t) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
   const [thinking, setThinking] = useState(false);
   const [shredding, setShredding] = useState(false);
+  // True dopóki użytkownik nic nie napisał — pozwala odświeżyć powitanie po zmianie języka
+  const [untouched, setUntouched] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Aktualizuj powitanie po zmianie języka, jeśli to wciąż jedyna wiadomość
+  // Po zmianie języka wylosuj nowe powitanie, jeśli rozmowa jeszcze się nie zaczęła
   useEffect(() => {
-    setMessages((prev) => {
-      if (prev.length === 1 && prev[0].role === "assistant") {
-        return [{ role: "assistant", content: t("chat.greeting") }];
-      }
-      return prev;
-    });
-  }, [i18n.language, t]);
+    if (untouched) {
+      setMessages([{ role: "assistant", content: pickStarter(t) }]);
+    }
+  }, [i18n.language, t, untouched]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -41,7 +52,8 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
     if (shreddingTick === 0) return;
     setShredding(true);
     const timer = setTimeout(() => {
-      setMessages([{ role: "assistant", content: t("chat.greeting") }]);
+      setMessages([{ role: "assistant", content: pickStarter(t) }]);
+      setUntouched(true);
       setShredding(false);
       toast.success(t("chat.cleared"), {
         description: t("chat.clearedDesc"),
@@ -54,6 +66,7 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
   const handleSend = async (text: string) => {
     const next: ChatMessage[] = [...messages, { role: "user", content: text }];
     setMessages(next);
+    setUntouched(false);
     setThinking(true);
     try {
       const reply = await sendMessageMock(next);

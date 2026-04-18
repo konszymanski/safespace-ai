@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { DoorOpen, Trash2, ShieldCheck } from "lucide-react";
+import { DoorOpen, Trash2 } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
+import logo from "@/assets/logo.png";
 
 interface QuickExitBarProps {
   onShred: () => void;
@@ -23,9 +24,14 @@ const QuickExitBar = ({ onShred }: QuickExitBarProps) => {
     <header className="sticky top-0 z-30 w-full border-b border-border bg-background/85 backdrop-blur-md">
       <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0 shadow-soft">
-            <ShieldCheck className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img
+            src={logo}
+            alt="Safe Space logo"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+
           <div className="min-w-0">
             <p className="font-display text-base leading-none truncate">{t("header.title")}</p>
             <p className="text-[11px] text-muted-foreground leading-tight">{t("header.tagline")}</p>

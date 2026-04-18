@@ -1,4 +1,5 @@
-// Klient API dla czatu backendowego.
+// Mock klient API — symuluje endpoint Osoby 2.
+// Zastąp wywołanie `fetch` realnym endpointem, gdy API będzie gotowe.
 import i18n from "@/i18n";
 
 export type ChatMessage = {
@@ -6,37 +7,42 @@ export type ChatMessage = {
   content: string;
 };
 
-type ChatApiResponse = {
-  assistant_reply: string;
+interface EmergencyLine {
+  number: string;
+  label: string;
+}
+
+// Słowa kluczowe dla detekcji kryzysu w trzech językach
+const CRISIS_PATTERNS: Record<string, RegExp> = {
+  pl: /(samob|skrzywdz|zabi[ćj]|nie chcę żyć|nie chce zyc|targn|odebra[ćc] sobie życie)/i,
+  en: /(suicid|kill myself|end my life|self[- ]?harm|hurt myself|don'?t want to live|want to die)/i,
+  uk: /(самогубств|вбити себе|накласти на себе руки|не хочу жити|завдати собі|покінчити|самопошкодж)/i,
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8001";
+function matchesCrisis(text: string, lang: string): boolean {
+  const base = (lang || "pl").split("-")[0];
+  const patterns = [CRISIS_PATTERNS[base], CRISIS_PATTERNS.pl, CRISIS_PATTERNS.en, CRISIS_PATTERNS.uk];
+  return patterns.some((p) => p?.test(text));
+}
 
 export async function sendMessageMock(history: ChatMessage[]): Promise<string> {
-  const last = history[history.length - 1]?.content?.trim() ?? "";
-  if (!last) {
+  // Symulacja opóźnienia sieci
+  await new Promise((r) => setTimeout(r, 900 + Math.random() * 800));
+
+  const lang = i18n.language || "pl";
+  const last = history[history.length - 1]?.content ?? "";
+
+  const lines = (i18n.t("emergency.lines", { returnObjects: true }) as EmergencyLine[]) ?? [];
+  const emergency = lines[0]?.number ?? "112";
+  const trustline = lines[1]?.number ?? lines[0]?.number ?? "112";
+
+  if (matchesCrisis(last, lang)) {
+    return i18n.t("mock.crisis", { emergency, trustline });
+  }
+
+  const replies = (i18n.t("mock.replies", { returnObjects: true }) as string[]) ?? [];
+  if (replies.length === 0) {
     return i18n.t("chat.greeting");
   }
-
-  const sessionId =
-    localStorage.getItem("chat_session_id") ?? `session-${crypto.randomUUID()}`;
-  localStorage.setItem("chat_session_id", sessionId);
-
-  const response = await fetch(`${API_BASE_URL}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      session_id: sessionId,
-      message: last,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Backend error: ${response.status}`);
-  }
-
-  const payload = (await response.json()) as ChatApiResponse;
-  return payload.assistant_reply ?? i18n.t("chat.greeting");
+  return replies[Math.floor(Math.random() * replies.length)];
 }
