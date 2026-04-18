@@ -5,59 +5,94 @@ import pandas as pd
 # Fix dla Maca
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-# Zakładamy, że plik nazywa się safety_service.py lub brain.py
-# (Upewnij się, że importujesz poprawną klasę, którą zmergowaliśmy)
+# Importy Twoich serwisów
 try:
     from backend.services.safety_service import SafetyService
+    from backend.services.xai_service import XAIService
 
-    print("✓ SafetyService import successful.")
-except ImportError:
-    print("❌ ERROR: Could not find safety_service.py. Check your file names!")
+    print("✓ Services import successful.")
+except ImportError as e:
+    print(f"❌ ERROR: Could not import services: {e}")
     sys.exit(1)
 
 
 def run_test():
     print("1. Starting initialization...")
     try:
-        # Upewnij się, że ścieżka do modelu jest poprawna względem miejsca, gdzie odpalasz skrypt!
+        # 1. Inicjalizacja serca systemu (Model + Transformer)
         brain = SafetyService(model_path='ml/local_models/safety_model.pkl')
-        print("2. Brain initialized successfully!\n")
+
+        # 2. Inicjalizacja XAI (przekazujemy brain jako źródło wyników)
+        xai = XAIService(safety_service=brain)
+
+        print("2. System initialized successfully!\n")
     except Exception as e:
         print(f"❌ FAILED at init: {e}")
         return
 
-    # Rozszerzona lista testowa dla lepszej walidacji
     test_cases = [
-        "I feel great today, life is beautiful!",  # Powinno być Joy + Low Risk
-        "I can't sleep, I'm constantly tired and I don't enjoy my hobbies anymore.",  # PHQ-9 detection test
-        "I have no reason to live anymore, everything is dark and I want to end it.",  # High Risk / Emergency
-        "I'm a bit annoyed by the weather, but I'm okay."  # Neutral/Low Risk
+        # 1. Pozytywne i codzienne
+        "I feel great today, life is beautiful! I'm so excited about our project, it's going to be amazing.",
+        "I had a very productive day at work. Now I am going to the gym and then I will cook a healthy dinner.",
+
+        # 2. Kliniczna Depresja (Wielozdaniowe)
+        "Everything I used to love feels gray and empty now. I just want to stay in bed forever, I don't see the point in getting up.",
+        "I've been feeling so heavy lately, like I'm walking through mud every day. It's hard to even talk to my friends.",
+
+        # 3. Kryzysowe / Bezpośrednie (Test dla XAI - wyłapanie najgroźniejszego zdania)
+        "I went to the store today and bought some groceries. But honestly, I have no reason to live anymore, everything is dark and I want to end it. Tomorrow is just another gray day.",
+        "I was thinking about where to find some pills to sleep forever. My family would be much better off if I wasn't around. I can't take this pain anymore.",
+
+        # 4. Fałszywe Alarmy (Kontekstualne)
+        "I'm dying of laughter, this meme is gold! You have to see it right now, it is hilarious.",
+        "I'm so tired of this slow internet, it's killing me. I need to change my provider as soon as possible.",
+
+        # 5. Mieszane (Ukryty smutek)
+        "I'm okay, I guess. Just the usual stress, nothing I can't handle. But sometimes I feel like I'm disappearing, and nobody even notices.",
+        "The weather is nice today. However, I feel so lonely inside that I can't even enjoy the sun."
     ]
 
-    print("--- STARTING ANALYSIS ---")
+    print("--- STARTING FULL ANALYSIS (WITH XAI) ---")
     for text in test_cases:
-        print("-" * 50)
-        print(f"Input: {text}")
+        print("\n" + "=" * 60)
+        print(f"INPUT TEXT: {text}")
 
-        # Wywołujemy naszą zmergowaną metodę analyze
+        # --- KROK 1: Podstawowa analiza ---
         result = brain.analyze(text)
 
-        # Wyświetlamy wyniki w czytelny sposób
+        print(f"\n[BASIC STATS]")
         print(f"Risk Score: {result['risk_score']}")
         print(f"Safe status: {'✅ SAFE' if result['is_safe'] else '🚨 DANGER'}")
 
-        # Wyświetlamy 3 najsilniejsze emocje (żeby nie zalewać konsoli słownikiem)
-        # Pobieramy surowy wektor emocji bezpośrednio z modelu dla podglądu
         emotions = brain._get_cached_emotions(text) if hasattr(brain, '_get_cached_emotions') else {}
         top_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)[:3]
-        print(f"Top Emotions: {top_emotions}")
+        print(f"Dominant Emotions: {top_emotions}")
 
-        # Objawy kliniczne
+        # --- KROK 2: Wyjaśnienie AI (XAI) ---
+        if result['risk_score'] > 0.3:
+            print(f"\n[EXPLAINABLE AI ANALYSIS]")
+            explanation = xai.get_full_analysis(text)
+
+            for entry in explanation['top_risk_analysis']:
+                print(f"-> Dangerous Sentence: \"{entry['sentence_text']}\"")
+                print(f"   Sentence Risk: {entry['sentence_risk']}")
+
+                # Wyświetlanie słów-zapalników
+                if entry['top_dangerous_words']:
+                    words_str = ", ".join([f"{w['word']} (+{w['impact']})" for w in entry['top_dangerous_words']])
+                    print(f"   Trigger Words: {words_str}")
+                else:
+                    print(f"   Trigger Words: None (contextual risk)")
+
+        # --- KROK 3: Metryki kliniczne ---
         symptoms = result['clinical_metrics']['symptoms']
-        print(f"Symptoms detected: {symptoms if symptoms else 'None'}")
-        print(f"PHQ-9 Estimate: {result['clinical_metrics']['phq9_est']}/27")
+        if symptoms:
+            print(f"\n[CLINICAL INSIGHTS]")
+            print(f"Detected Symptoms: {symptoms}")
+            print(f"PHQ-9 Est: {result['clinical_metrics']['phq9_est']}/27")
 
-    print("\n--- TEST FINISHED ---")
+    print("\n" + "=" * 60)
+    print("--- ALL TESTS FINISHED ---")
 
 
 if __name__ == "__main__":

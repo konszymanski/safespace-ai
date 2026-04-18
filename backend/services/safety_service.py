@@ -73,7 +73,7 @@ class SafetyService:
 
         return {
             "risk_score": risk_score,
-            "is_safe": risk_score < 0.7,  # Próg bezpieczeństwa
+            "is_safe": risk_score < 0.5,  # Próg bezpieczeństwa
             "clinical_metrics": {
                 "symptoms": detected_symptoms,
                 "phq9_est": min(len(detected_symptoms) * 3, 27)
