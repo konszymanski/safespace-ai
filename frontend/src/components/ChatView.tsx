@@ -7,6 +7,7 @@ import ChatComposer from "./ChatComposer";
 import ThinkingBubble from "./ThinkingBubble";
 import { ChatMessage, sendMessageMock } from "@/lib/mockApi";
 
+
 interface ChatViewProps {
   shreddingTick: number;
 }

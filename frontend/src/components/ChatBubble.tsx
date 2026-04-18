@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { ElementType } from "react"; // Add this import
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -7,8 +10,12 @@ interface ChatBubbleProps {
   shredding?: boolean;
 }
 
+// This line forces the component to be seen as a standard JSX element
+const MemoizedMarkdown = ReactMarkdown as unknown as ElementType;
+
 const ChatBubble = ({ role, content, shredding }: ChatBubbleProps) => {
   const isUser = role === "user";
+
   return (
     <div
       className={cn(
@@ -30,7 +37,15 @@ const ChatBubble = ({ role, content, shredding }: ChatBubbleProps) => {
             : "bg-card text-card-foreground rounded-3xl rounded-bl-md border border-border",
         )}
       >
-        {content}
+        {/* We use the casted component here */}
+        <div className={cn(
+          "prose prose-sm max-w-none break-words",
+          isUser ? "prose-invert" : "dark:prose-invert"
+        )}>
+          <MemoizedMarkdown remarkPlugins={[remarkGfm]}>
+            {content}
+          </MemoizedMarkdown>
+        </div>
       </div>
     </div>
   );
