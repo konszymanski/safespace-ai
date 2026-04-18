@@ -2,6 +2,7 @@ import torch
 import pickle
 import re
 import os
+import numpy as np
 import pandas as pd
 from transformers import pipeline
 from functools import lru_cache
@@ -13,19 +14,34 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class SafetyService:
-    def __init__(self, model_path='../ml/local_models/safety_model.pkl'):
+    def __init__(self, model_path='../ml/local_models/safety_models.pkl'):
         """
-        Zmergowany serwis bezpieczeństwa.
-        Łączy klasyfikator emocji (Transformer) z modelem ryzyka (Random Forest).
+        Zmergowany serwis bezpieczeństwa z dwoma modelami:
+        - Brain (Diagnoza): TF-IDF + RandomForest na surowym tekście
+        - Heart (Interpretacja): DistilBERT Emotions + emocje-based RandomForest
         """
-        print("--- Initializing New Safety Service ---")
+        print("--- Initializing Safety Service (Brain + Heart) ---")
 
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model pkl nie znaleziony w: {model_path}")
-
-        with open(model_path, 'rb') as f:
-            self.safety_model = pickle.load(f)
-        print("✓ Safety Model (RandomForest) loaded.")
+        # Try new combined model first, fallback to old one
+        new_model_path = model_path
+        old_model_path = '../ml/local_models/safety_model.pkl'
+        
+        if os.path.exists(new_model_path):
+            with open(new_model_path, 'rb') as f:
+                models_dict = pickle.load(f)
+            self.tfidf_vectorizer = models_dict.get('tfidf_vectorizer')
+            self.combined_model = models_dict.get('combined_model')
+            self.emotion_model = models_dict.get('emotion_model')
+            print("✓ Combined Model (TF-IDF + Emotions) loaded.")
+            print("✓ Feature metadata:", models_dict.get('feature_count', {}))
+        elif os.path.exists(old_model_path):
+            with open(old_model_path, 'rb') as f:
+                self.emotion_model = pickle.load(f)
+            self.tfidf_vectorizer = None
+            self.combined_model = None
+            print("✓ Emotion Model (Legacy mode) loaded.")
+        else:
+            raise FileNotFoundError(f"Model pkl nie znaleziony w: {new_model_path} ani {old_model_path}")
 
         self.emotion_classifier = pipeline(
             "text-classification",
@@ -51,16 +67,74 @@ class SafetyService:
     def get_risk_score(self, text: str) -> float:
         """
         Kluczowa metoda dla XAIService.
-        Zwraca prawdopodobieństwo ryzyka (0.0 - 1.0).
+        Zwraca prawdopodobieństwo ryzyka (0.0 - 1.0) z modelu połączonego.
+        Połączony model używa: TF-IDF (słowa) + Emotions (sentymenty)
         """
         try:
-            features = self._get_emotions_vector(text)
-            # predict_proba zwraca [[prawd_0, prawd_1]] -> bierzemy prawd_1 (ryzyko)
-            risk_score = self.safety_model.predict_proba(features)[0][1]
-            return round(float(risk_score), 4)
+            # Use combined model if available
+            if self.combined_model and self.tfidf_vectorizer:
+                return self._get_combined_risk(text)
+            # Fallback to emotion model
+            elif self.emotion_model:
+                emotions_vector = self._get_emotions_vector(text)
+                risk_score = self.emotion_model.predict_proba(emotions_vector)[0][1]
+                return round(float(risk_score), 4)
+            else:
+                return 0.0
         except Exception as e:
             print(f"Error in get_risk_score: {e}")
             return 0.0
+
+    def _get_combined_risk(self, text: str) -> float:
+        """Compute risk from combined model (TF-IDF + Emotions)."""
+        try:
+            # Get TF-IDF features
+            tfidf_features = self.tfidf_vectorizer.transform([text]).toarray()
+            
+            # Get emotion features
+            emotions_dict = self._get_cached_emotions(text)
+            emotion_order = ['sadness', 'joy', 'love', 'anger', 'fear', 'surprise']
+            emotion_features = [[emotions_dict.get(e, 0.0) for e in emotion_order]]
+            
+            # Combine features
+            combined_features = np.hstack([tfidf_features, emotion_features])
+            
+            # Predict
+            risk_score = self.combined_model.predict_proba(combined_features)[0][1]
+            return round(float(risk_score), 4)
+        except Exception as e:
+            print(f"Error in _get_combined_risk: {e}")
+            return 0.0
+
+    def get_risk_scores_detailed(self, text: str) -> dict:
+        """
+        Zwraca detailowe info o ryzyku i cechach które wpłynęły na decyzję.
+        """
+        detailed = {
+            "combined_risk": 0.0,
+            "tfidf_contribution": None,
+            "emotion_contribution": None
+        }
+        
+        try:
+            # Combined model risk
+            if self.combined_model and self.tfidf_vectorizer:
+                detailed["combined_risk"] = self._get_combined_risk(text)
+                
+                # Get individual contributions
+                tfidf_features = self.tfidf_vectorizer.transform([text]).toarray()
+                emotions_dict = self._get_cached_emotions(text)
+                
+                # Store for feature importance analysis
+                detailed["tfidf_contribution"] = {
+                    "num_features": tfidf_features.shape[1],
+                    "non_zero": int((tfidf_features > 0).sum())
+                }
+                detailed["emotion_contribution"] = emotions_dict
+        except Exception as e:
+            print(f"Error in get_risk_scores_detailed: {e}")
+        
+        return detailed
 
     def analyze(self, text: str):
         """Pełna analiza dla backendu: ryzyko + emocje + PHQ-9."""
