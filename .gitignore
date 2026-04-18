@@ -1,0 +1,43 @@
+# --- System Files ---
+.DS_Store
+Thumbs.db
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+env/
+venv/
+build/
+dist/
+*.egg-info/
+
+# --- Machine Learning (Modele i Dane) ---
+# Ignorujemy wagi modeli (pamiętajcie o Git LFS lub manualnym wrzucie)
+ml/local_models/*.bin
+ml/local_models/*.pt
+ml/local_models/*.pth
+ml/local_models/*.h5
+ml/local_models/*.weights
+# Dane treningowe (często za duże na Git)
+ml/train/*.csv
+ml/train/*.json
+
+# --- Frontend (Node.js) ---
+frontend/node_modules/
+frontend/build/
+frontend/.pnp
+.pnp.js
+frontend/coverage/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
