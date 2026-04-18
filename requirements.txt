@@ -1,4 +1,20 @@
+# Silnik AI i Emocje
+torch
+transformers
+accelerate
+
+# Klasyfikator Bezpieczeństwa i Dane
+scikit-learn
 pandas
 numpy
+joblib
+
+# Backend (dla Osoby 2)
+fastapi
+uvicorn
+python-dotenv
+
+# Narzędzia pomocnicze
 requests
-matplotlib
+tqdm
+
