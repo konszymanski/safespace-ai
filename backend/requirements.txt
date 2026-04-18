@@ -4,3 +4,14 @@ transformers
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 pydantic
+accelerate
+python-dotenv
+google-genai
+xgboost
+scikit-learn
+pandas
+numpy
+joblib
+python-dotenv
+requests
+tqdm

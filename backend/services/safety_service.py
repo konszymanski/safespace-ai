@@ -13,7 +13,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class SafetyService:
-    def __init__(self, model_path='../../ml/local_models/safety_model.pkl'):
+    def __init__(self, model_path='../ml/local_models/safety_model.pkl'):
         """
         Zmergowany serwis bezpieczeństwa.
         Łączy klasyfikator emocji (Transformer) z modelem ryzyka (Random Forest).

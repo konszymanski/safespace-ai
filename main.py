@@ -20,7 +20,7 @@ def run_test():
     print("1. Starting initialization...")
     try:
         # 1. Inicjalizacja serca systemu (Model + Transformer)
-        brain = SafetyService(model_path='ml/local_models/safety_model.pkl')
+        brain = SafetyService(model_path='backend/ml/local_models/safety_model.pkl')
 
         # 2. Inicjalizacja XAI (przekazujemy brain jako źródło wyników)
         xai = XAIService(safety_service=brain)
