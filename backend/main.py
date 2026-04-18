@@ -1,6 +1,7 @@
 import asyncio
 import os
-from typing import Any, Literal
+import random
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -20,6 +21,15 @@ LEVEL_2_THRESHOLD = 2.5
 INSTANT_KILL_THRESHOLD = 0.98
 POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD = 0.9
 POSITIVE_MESSAGE_DECREMENT = 0.2
+USE_MOCK = False
+DEFAULT_CBT_PROMPT = (
+    "Jesteś wspierającym asystentem opartym o podejście CBT. "
+    "Stosuj empatyczny ton, zadawaj pytania sokratejskie, "
+    "pomagaj identyfikować zniekształcenia poznawcze "
+    "(np. katastrofizacja, czarno-białe myślenie, nadmierne uogólnianie), "
+    "proponuj krótkie techniki regulacji emocji i uziemiania. "
+    "Nie diagnozuj medycznie. Zachęcaj do kontaktu ze specjalistą, gdy to zasadne."
+)
 LEVEL_1_SECRET_INSTRUCTION = (
     "Użytkownik wykazuje sygnały obniżonego nastroju. "
     "Skup się na empatii i technikach uziemiających."
@@ -62,6 +72,20 @@ class ChatRequest(BaseModel):
 async def run_local_classifier(message: str) -> dict:
     # Backend zakłada, że lokalny model zwraca gotowy wynik binarny.
     # Nie przeliczamy niczego na backendzie - tylko walidujemy kontrakt.
+    if USE_MOCK:
+        prediction = random.choice([0, 1])
+        confidence = round(random.uniform(0.55, 0.99), 3)
+        prob_1 = confidence if prediction == 1 else round(1.0 - confidence, 3)
+        prob_0 = round(1.0 - prob_1, 3)
+        return {
+            "provider": "local-mock",
+            "prediction": prediction,
+            "confidence": confidence,
+            "prob_0": max(0.0, min(1.0, prob_0)),
+            "prob_1": max(0.0, min(1.0, prob_1)),
+            "explanation": "Wynik mockowy (USE_MOCK=True).",
+        }
+
     raw_result = await asyncio.to_thread(classifier, message)
 
     if isinstance(raw_result, list) and raw_result and isinstance(raw_result[0], dict):
@@ -138,7 +162,51 @@ def update_session_crisis_points(
     return state
 
 
-async def run_gemini_model(message: str, system_prompt: str | None = None) -> dict:
+def ensure_session_state(session_id: str) -> dict[str, Any]:
+    state = session_memory.get(
+        session_id,
+        {
+            "crisis_points_history": [],
+            "total_risk_score": 0.0,
+            "messages_seen": 0,
+            "chat_history": [],
+        },
+    )
+    state.setdefault("chat_history", [])
+    session_memory[session_id] = state
+    return state
+
+
+def append_chat_message(session_id: str, role: str, content: str) -> None:
+    state = ensure_session_state(session_id)
+    state["chat_history"].append({"role": role, "content": content})
+
+
+def build_gemini_prompt_from_history(
+    chat_history: list[dict[str, str]],
+    current_message: str,
+    extra_system_prompt: str | None = None,
+) -> str:
+    system_parts = [DEFAULT_CBT_PROMPT]
+    if extra_system_prompt:
+        system_parts.append(extra_system_prompt)
+    system_block = "\n\n".join(system_parts)
+
+    lines = [f"[SYSTEM]\n{system_block}", "[HISTORIA ROZMOWY]"]
+    for msg in chat_history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        lines.append(f"{role.upper()}: {content}")
+    lines.append(f"USER: {current_message}")
+    lines.append("ASSISTANT:")
+    return "\n".join(lines)
+
+
+async def run_gemini_model(
+    message: str,
+    system_prompt: str | None = None,
+    chat_history: list[dict[str, str]] | None = None,
+) -> dict:
     if genai is None:
         raise HTTPException(
             status_code=500,
@@ -157,10 +225,11 @@ async def run_gemini_model(message: str, system_prompt: str | None = None) -> di
 
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-    if system_prompt:
-        prompt = f"{system_prompt}\n\nWiadomość użytkownika:\n{message}"
-    else:
-        prompt = message
+    prompt = build_gemini_prompt_from_history(
+        chat_history or [],
+        message,
+        system_prompt,
+    )
 
     response = await asyncio.to_thread(model.generate_content, prompt)
 
@@ -179,6 +248,9 @@ def predict_emotion(message: UserMessage):
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    ensure_session_state(request.session_id)
+    append_chat_message(request.session_id, "user", request.message)
+
     classifier_result = await run_local_classifier(request.message)
 
     prediction = int(classifier_result["prediction"])
@@ -219,8 +291,15 @@ async def chat(request: ChatRequest):
                 )
             else:
                 gemini_system_prompt = f"[SAFETY NOTE]\n{secret_instruction}"
-        gemini_result = await run_gemini_model(request.message, gemini_system_prompt)
+        state_for_prompt = ensure_session_state(request.session_id)
+        gemini_result = await run_gemini_model(
+            request.message,
+            gemini_system_prompt,
+            state_for_prompt["chat_history"][:-1],
+        )
         assistant_reply = gemini_result["reply"]
+
+    append_chat_message(request.session_id, "assistant", assistant_reply)
 
     return {
         "session_id": request.session_id,
@@ -240,6 +319,9 @@ async def chat(request: ChatRequest):
         "actions": {
             "trigger_task_2": should_trigger_task2,
             "instant_kill": instant_kill,
+        },
+        "session": {
+            "history_length": len(ensure_session_state(request.session_id)["chat_history"]),
         },
     }
 
