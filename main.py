@@ -1,6 +1,5 @@
 import os
 import sys
-import pandas as pd
 
 # Fix dla Maca
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'

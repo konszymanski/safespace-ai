@@ -1,9 +1,14 @@
 import os
 import json
+from pathlib import Path
+
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+# Zawsze próbuj `backend/.env` (niezależnie od cwd przy `uvicorn` z katalogu głównego repo).
+_backend_dir = Path(__file__).resolve().parent.parent
+load_dotenv(_backend_dir / ".env")
 load_dotenv()
 
 
