@@ -6,3 +6,14 @@ torch
 pydantic
 google-genai
 python-dotenv
+accelerate
+python-dotenv
+google-genai
+xgboost
+scikit-learn
+pandas
+numpy
+joblib
+python-dotenv
+requests
+tqdm

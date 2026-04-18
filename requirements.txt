@@ -1,6 +1,15 @@
+torch
+transformers
+accelerate
 python-dotenv
 google-genai
 xgboost
+scikit-learn
 pandas
 numpy
-scikit-learn
+joblib
+fastapi
+uvicorn
+python-dotenv
+requests
+tqdm
