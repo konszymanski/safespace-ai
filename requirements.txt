@@ -1,0 +1,6 @@
+python-dotenv
+google-genai
+xgboost
+pandas
+numpy
+scikit-learn
