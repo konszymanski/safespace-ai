@@ -1,20 +1,15 @@
-# Silnik AI i Emocje
 torch
 transformers
 accelerate
-
-# Klasyfikator Bezpieczeństwa i Dane
+python-dotenv
+google-genai
+xgboost
 scikit-learn
 pandas
 numpy
 joblib
-
-# Backend (dla Osoby 2)
 fastapi
 uvicorn
 python-dotenv
-
-# Narzędzia pomocnicze
 requests
 tqdm
-
