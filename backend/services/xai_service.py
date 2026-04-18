@@ -70,7 +70,7 @@ class XAIService:
             word_explanations = self.get_explanations(sentence_text)
 
             dangerous_words = [
-                w for w in word_explanations if w["impact"] > 0
+                w for w in word_explanations if w["impact"] > 0.01
             ]
 
             dangerous_words.sort(key=lambda x: x["impact"], reverse=True)
