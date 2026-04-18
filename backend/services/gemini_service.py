@@ -10,13 +10,15 @@ load_dotenv()
 class GeminiService:
     def __init__(self, model_name="gemini-3-flash-preview"):
         api_key = os.getenv("GEMINI_API_KEY")
+        self.client = None
+        self.init_error = None
         if not api_key:
-            raise ValueError("Brak klucza GEMINI_API_KEY w pliku .env!")
-
-        self.client = genai.Client(
-            api_key=api_key,
-            vertexai=False
-        )
+            self.init_error = "Brak klucza GEMINI_API_KEY w pliku .env!"
+        else:
+            self.client = genai.Client(
+                api_key=api_key,
+                vertexai=False
+            )
         self.model_name = model_name
 
         prompt_path = os.path.join("docs", "prompts", "system_prompt.txt")
@@ -29,6 +31,8 @@ class GeminiService:
             print(f"OSTRZEŻENIE: Nie znaleziono pliku {prompt_path}")
 
     def start_chat_session(self):
+        if self.client is None:
+            raise ValueError(self.init_error or "Gemini client nie został zainicjalizowany.")
         return self.client.chats.create(
             model=self.model_name,
             config=types.GenerateContentConfig(
@@ -36,13 +40,16 @@ class GeminiService:
             )
         )
 
-    def ask_gemini(self, prompt: str):
+    def ask_gemini(self, prompt: str, system_instruction: str | None = None):
+        if self.client is None:
+            return f"Błąd: {self.init_error or 'Gemini client nie został zainicjalizowany.'}"
+        final_instruction = system_instruction or self.system_instruction
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    system_instruction=self.system_instruction
+                    system_instruction=final_instruction
                 )
             )
             return response.text
@@ -50,6 +57,8 @@ class GeminiService:
             return f"Błąd: {str(e)}"
 
     def analyze_to_json(self, prompt: str):
+        if self.client is None:
+            return {"error": self.init_error or "Gemini client nie został zainicjalizowany."}
         json_config = genai.types.GenerateContentConfig(
             system_instruction="Analizuj tekst i zwracaj TYLKO czysty JSON.",
             response_mime_type="application/json"

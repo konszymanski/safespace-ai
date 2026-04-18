@@ -1,0 +1,56 @@
+{
+  "language": {
+    "label": "Język",
+    "pl": "Polski",
+    "en": "English",
+    "uk": "Українська"
+  },
+  "header": {
+    "title": "Safe Space",
+    "tagline": "anonimowo · bez śladu",
+    "clear": "Wyczyść",
+    "clearAria": "Wyczyść dane sesji",
+    "quickExit": "Szybkie wyjście",
+    "quickExitAria": "Szybkie wyjście — natychmiast opuść stronę"
+  },
+  "disclaimer": {
+    "kicker": "Kontrakt bezpieczeństwa",
+    "title": "Zanim zaczniemy rozmowę",
+    "notMedical": "To nie jest porada lekarska ani psychologiczna.",
+    "intro": "Jestem przestrzenią do rozmowy i wsparcia emocjonalnego — nie zastępuję terapeuty, lekarza ani służb ratunkowych.",
+    "needHelpNow": "Jeśli potrzebujesz pomocy teraz",
+    "privacyNote": "Twoja rozmowa żyje tylko w tej karcie przeglądarki. Po zamknięciu lub wyczyszczeniu danych — znika bezpowrotnie.",
+    "consent": "Rozumiem i akceptuję powyższe warunki. Wiem, że w sytuacji zagrożenia życia skontaktuję się z numerem alarmowym <strong>{{emergency}}</strong>.",
+    "consentAria": "Akceptuję warunki",
+    "accept": "Zgadzam się — wejdź do bezpiecznej przestrzeni"
+  },
+  "chat": {
+    "greeting": "Cześć. Jestem tu, żeby cię wysłuchać. Nie musisz się spieszyć — pisz tak, jak ci wygodnie. Co dziś sprowadziło cię tutaj?",
+    "placeholder": "Napisz, co czujesz…",
+    "inputAria": "Wpisz wiadomość",
+    "send": "Wyślij",
+    "footerNote": "Twoja rozmowa zostaje tylko w tej karcie. Zamknięcie = zniknięcie.",
+    "thinking": "AI myśli",
+    "thinkingAria": "AI myśli",
+    "cleared": "Sesja wyczyszczona",
+    "clearedDesc": "Wszystkie wiadomości zniknęły z tej karty.",
+    "error": "Coś poszło nie tak. Spróbuj jeszcze raz."
+  },
+  "mock": {
+    "replies": [
+      "Słyszę cię. To, co opisujesz, brzmi naprawdę ciężko. Chcesz mi powiedzieć więcej o tym, co czujesz teraz?",
+      "Dziękuję, że mi to mówisz. Jesteś tu bezpiecznie. Co dziś najbardziej cię obciąża?",
+      "Rozumiem. Czasem samo nazwanie tego, co siedzi w środku, wymaga ogromnej odwagi. Co teraz czujesz w ciele?",
+      "Jestem z tobą w tej rozmowie. Pamiętaj, że jeśli pojawią się myśli zagrażające twojemu życiu, możesz natychmiast zadzwonić pod numer alarmowy."
+    ],
+    "crisis": "To, co piszesz, jest dla mnie bardzo ważne. Twoje życie ma znaczenie. Proszę, zadzwoń teraz pod {{emergency}} albo {{trustline}} (Telefon Zaufania). Możesz też nacisnąć przycisk „Szybkie wyjście”, jeśli musisz zniknąć z tej strony."
+  },
+  "emergency": {
+    "country": "Polska",
+    "lines": [
+      { "number": "112", "label": "numer alarmowy (zagrożenie życia)" },
+      { "number": "116 123", "label": "Telefon Zaufania dla Dorosłych" },
+      { "number": "116 111", "label": "Telefon Zaufania dla Dzieci i Młodzieży" }
+    ]
+  }
+}
