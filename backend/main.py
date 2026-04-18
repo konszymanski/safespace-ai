@@ -1,27 +1,21 @@
 import asyncio
-import os
 import random
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import pipeline
-
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
+from services.gemini_service import gemini_service
 
 app = FastAPI(title="Well-being API")
 
 LOCAL_MODEL_NAME = "bhadresh-savani/distilbert-base-uncased-emotion"
-GEMINI_MODEL_NAME = "gemini-1.5-flash"
 LEVEL_1_THRESHOLD = 1.0
 LEVEL_2_THRESHOLD = 2.5
 INSTANT_KILL_THRESHOLD = 0.98
 POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD = 0.9
 POSITIVE_MESSAGE_DECREMENT = 0.2
-USE_MOCK = False
+USE_MOCK = True
 DEFAULT_CBT_PROMPT = (
     "Jesteś wspierającym asystentem opartym o podejście CBT. "
     "Stosuj empatyczny ton, zadawaj pytania sokratejskie, "
@@ -207,36 +201,23 @@ async def run_gemini_model(
     system_prompt: str | None = None,
     chat_history: list[dict[str, str]] | None = None,
 ) -> dict:
-    if genai is None:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Brak biblioteki google-generativeai. "
-                "Zainstaluj pakiet: pip install google-generativeai"
-            ),
-        )
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=500,
-            detail="Brak klucza GEMINI_API_KEY w zmiennych środowiskowych.",
-        )
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(GEMINI_MODEL_NAME)
     prompt = build_gemini_prompt_from_history(
         chat_history or [],
         message,
         system_prompt,
     )
 
-    response = await asyncio.to_thread(model.generate_content, prompt)
+    response_text = await asyncio.to_thread(
+        gemini_service.ask_gemini,
+        prompt,
+    )
+    if isinstance(response_text, str) and response_text.startswith("Błąd:"):
+        raise HTTPException(status_code=500, detail=response_text)
 
     return {
         "provider": "gemini",
-        "model": GEMINI_MODEL_NAME,
-        "reply": response.text if response else "",
+        "model": gemini_service.model_name,
+        "reply": response_text or "",
     }
 
 
