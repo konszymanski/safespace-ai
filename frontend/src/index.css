@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Safe Space — design system. Wszystkie kolory w HSL. Paleta Blush & Lavender. */
+
+@layer base {
+  :root {
+    /* Tła i powierzchnie */
+    --background: 340 60% 98%;
+    --foreground: 270 25% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 25% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 25% 18%;
+
+    /* Lawenda — główny brand */
+    --primary: 273 45% 63%;
+    --primary-foreground: 340 60% 98%;
+    --primary-soft: 282 50% 85%;
+
+    /* Blush — pomocniczy */
+    --secondary: 340 60% 94%;
+    --secondary-foreground: 273 35% 30%;
+
+    --muted: 330 35% 95%;
+    --muted-foreground: 270 12% 45%;
+
+    --accent: 282 55% 80%;
+    --accent-foreground: 273 40% 25%;
+
+    /* Bezpieczeństwo / awaria */
+    --safe: 150 40% 50%;
+    --safe-foreground: 0 0% 100%;
+    --danger: 0 70% 55%;
+    --danger-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 320 30% 90%;
+    --input: 320 30% 90%;
+    --ring: 273 45% 63%;
+
+    --radius: 1rem;
+
+    /* Gradienty i cienie */
+    --gradient-calm: linear-gradient(135deg, hsl(340 60% 96%), hsl(282 50% 92%));
+    --gradient-primary: linear-gradient(135deg, hsl(273 45% 63%), hsl(330 60% 70%));
+    --shadow-soft: 0 10px 40px -10px hsl(273 45% 63% / 0.25);
+    --shadow-glow: 0 0 60px hsl(282 60% 80% / 0.5);
+
+    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 270 25% 10%;
+    --foreground: 340 30% 95%;
+    --card: 270 25% 13%;
+    --card-foreground: 340 30% 95%;
+    --popover: 270 25% 13%;
+    --popover-foreground: 340 30% 95%;
+    --primary: 282 55% 75%;
+    --primary-foreground: 270 25% 10%;
+    --secondary: 270 20% 18%;
+    --secondary-foreground: 340 30% 95%;
+    --muted: 270 20% 18%;
+    --muted-foreground: 320 15% 65%;
+    --accent: 282 40% 30%;
+    --accent-foreground: 340 30% 95%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 270 20% 22%;
+    --input: 270 20% 22%;
+    --ring: 282 55% 75%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv11";
+  }
+}
+
+@layer utilities {
+  .bg-gradient-calm {
+    background: var(--gradient-calm);
+  }
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+}
+
+/* Niszczarka — efekt rozdzierania i rozmywania */
+@keyframes shred {
+  0% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: translateY(0) skewX(0);
+    filter: blur(0);
+    opacity: 1;
+  }
+  40% {
+    filter: blur(1px);
+  }
+  100% {
+    clip-path: polygon(
+      0 0, 5% 100%, 10% 0, 15% 100%, 20% 0, 25% 100%, 30% 0,
+      35% 100%, 40% 0, 45% 100%, 50% 0, 55% 100%, 60% 0,
+      65% 100%, 70% 0, 75% 100%, 80% 0, 85% 100%, 90% 0,
+      95% 100%, 100% 0
+    );
+    transform: translateY(40px) skewX(-3deg);
+    filter: blur(8px);
+    opacity: 0;
+  }
+}
+
+.animate-shred {
+  animation: shred 1.2s cubic-bezier(0.55, 0, 0.7, 0.2) forwards;
+}
+
+@keyframes thinking-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.thinking-dot {
+  animation: thinking-dot 1.4s infinite ease-in-out;
+}

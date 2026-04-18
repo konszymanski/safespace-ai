@@ -1,0 +1,8 @@
+# Ustaw domyślne zachowanie na automatyczne
+* text=auto
+
+# Wymuś LF dla wszystkich plików tekstowych (zalecane dla hackathonów i webdevu)
+*.html text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.py text eol=lf
