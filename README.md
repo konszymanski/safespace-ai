@@ -90,23 +90,17 @@ Important: backend session memory is in RAM only and resets on server restart.
 
 ## Run with Docker (recommended)
 
-From repository root:
-
+### Clone the project
 ```bash
-docker compose up --build
+git clone [https://github.com/konszymanski/hacknarok-fiatpandas.git]
 ```
 
-# Clone the project
-```bash
-git clone [https://github.com/konszymanski/hacknarok-fiatpandas.git](https://github.com/konszymanski/hacknarok-fiatpandas.git)
-```
-
-# Enter the directory
+### Enter the directory
 ```bash
 cd hacknarok-fiatpandas
 ```
 
-# Build containers
+### Build containers
 ```bash
 docker-compose up --build
 ```
