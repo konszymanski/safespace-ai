@@ -7,16 +7,22 @@ import numpy as np
 from transformers import pipeline
 from functools import lru_cache
 
+
 class SafetyMLP(nn.Module):
     def __init__(self, input_size):
         super(SafetyMLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(input_size, 128),
+            nn.Linear(input_size, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.4),
+
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Dropout(0.2),
             nn.Linear(64, 1),
             nn.Sigmoid()
         )
@@ -33,17 +39,29 @@ class SafetyServiceMLP:
         base_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'local_models')
 
         try:
-            self.tfidf = joblib.load(os.path.join(base_path, 'tfidf_vectorizer.pkl'))
+            self.tfidf_vectorizer = joblib.load(os.path.join(base_path, 'tfidf_vectorizer.pkl'))
             self.scaler = joblib.load(os.path.join(base_path, 'scaler.pkl'))
 
-            input_dim = len(self.tfidf.get_feature_names_out()) + 6
-            self.model = SafetyMLP(input_dim)
-            self.model.load_state_dict(torch.load(os.path.join(base_path, 'safety_mlp.pth')))
-            self.model.eval()
+            input_dim = len(self.tfidf_vectorizer.get_feature_names_out()) + 6
+            self.combined_model = SafetyMLP(input_dim)
+            self.combined_model.load_state_dict(torch.load(os.path.join(base_path, 'safety_mlp.pth')))
+            self.combined_model.eval()
 
             self.emotion_clf = pipeline("text-classification",
                                         model="bhadresh-savani/distilbert-base-uncased-emotion",
                                         top_k=None, device=-1)
+
+            self.phq9_map = {
+                "anhedonia": ["interest", "pleasure", "hobbies", "bored", "nothing feels good", "don't care"],
+                "depressed_mood": ["sad", "hopeless", "depressed", "miserable", "down", "crying", "blue"],
+                "sleep_issues": ["sleep", "insomnia", "waking up", "oversleeping", "can't sleep", "restless"],
+                "energy_loss": ["tired", "no energy", "exhausted", "fatigue", "drained", "heavy"],
+                "appetite_issues": ["appetite", "eating", "hungry", "food", "weight", "binge", "starving"],
+                "low_self_esteem": ["failure", "let down", "useless", "worthless", "hate myself", "disappointed"],
+                "concentration": ["focus", "concentrating", "distracted", "brain fog", "can't think", "reading"],
+                "psychomotor": ["slow", "moving slow", "jittery", "pacing", "restless", "fidgeting"],
+                "suicidal_ideation": ["die", "suicide", "end it", "kill myself", "hurt myself", "better off dead"]
+            }
 
             print("✓ Neural Engine & Transformer loaded successfully.")
         except Exception as e:
@@ -61,7 +79,8 @@ class SafetyServiceMLP:
 
     def get_risk_score(self, text):
         try:
-            tfidf_feat = self.tfidf.transform([self._clean_text(text)]).toarray()
+            cleaned = self._clean_text(text)
+            tfidf_feat = self.tfidf_vectorizer.transform([cleaned]).toarray()
 
             ems = self._get_emotions(text)
             em_order = ['sadness', 'joy', 'love', 'anger', 'fear', 'surprise']
@@ -72,17 +91,29 @@ class SafetyServiceMLP:
 
             with torch.no_grad():
                 tensor_input = torch.FloatTensor(scaled)
-                score = self.model(tensor_input).item()
+                output = self.combined_model(tensor_input)
+                score = output.item()
 
             return round(float(score), 4)
+
         except Exception as e:
-            print(f"Prediction error: {e}")
+            print(f"❌ ERROR in get_risk_score: {e}")
             return 0.0
 
     def analyze(self, text):
-        score = self.get_risk_score(text)
+        risk_score = self.get_risk_score(text)
+
+        detected_symptoms = [
+            s for s, keywords in self.phq9_map.items()
+            if any(re.search(rf'\b{re.escape(word)}\b', text.lower()) for word in keywords)
+        ]
+
         return {
-            "risk_score": score,
-            "is_safe": score < 0.5,
-            "status": "Red Flag" if score >= 0.5 else "Stable"
+            "risk_score": risk_score,
+            "is_safe": risk_score < 0.5,
+            "status": "Red Flag" if risk_score >= 0.5 else "Stable",
+            "clinical_metrics": {
+                "symptoms": detected_symptoms,
+                "phq9_est": min(len(detected_symptoms) * 3, 27)
+            }
         }

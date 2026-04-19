@@ -6,7 +6,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 # Importy Twoich serwisów
 try:
-    from backend.services.safety_service import SafetyService
+    from backend.services.safety_service_mlp import SafetyServiceMLP
     from backend.services.xai_service import XAIService
 
     print("✓ Services import successful.")
@@ -18,7 +18,7 @@ except ImportError as e:
 def run_test():
     print("1. Starting initialization...")
     try:
-        brain = SafetyService(model_path='backend/ml/local_models/safety_models.pkl')
+        brain = SafetyServiceMLP()
         xai = XAIService(safety_service=brain)
         print("2. System initialized successfully!\n")
     except Exception as e:
