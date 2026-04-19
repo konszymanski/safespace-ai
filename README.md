@@ -110,8 +110,6 @@ Services:
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8001`
 
-```
-
 ## Environment Variables
 
 Backend expects `GEMINI_API_KEY` in `backend/.env`.
