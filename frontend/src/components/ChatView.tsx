@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import ChatBubble from "./ChatBubble";
 import ChatComposer from "./ChatComposer";
 import ThinkingBubble from "./ThinkingBubble";
-import { ChatMessage, sendMessageMock } from "@/lib/mockApi";
+import { ChatMessage, revokeCurrentChatSession, sendMessageMock } from "@/lib/mockApi";
 
 interface ChatViewProps {
   shreddingTick: number;
@@ -41,11 +41,14 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
     if (shreddingTick === 0) return;
     setShredding(true);
     const timer = setTimeout(() => {
-      setMessages([{ role: "assistant", content: t("chat.greeting") }]);
-      setShredding(false);
-      toast.success(t("chat.cleared"), {
-        description: t("chat.clearedDesc"),
-      });
+      void (async () => {
+        await revokeCurrentChatSession();
+        setMessages([{ role: "assistant", content: t("chat.greeting") }]);
+        setShredding(false);
+        toast.success(t("chat.cleared"), {
+          description: t("chat.clearedDesc"),
+        });
+      })();
     }, 1100);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

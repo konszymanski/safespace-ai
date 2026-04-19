@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DoorOpen, Trash2, ShieldCheck } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { revokeCurrentChatSession } from "@/lib/mockApi";
 
 interface QuickExitBarProps {
   onShred: () => void;
@@ -11,12 +12,15 @@ const QuickExitBar = ({ onShred }: QuickExitBarProps) => {
   const { t } = useTranslation();
 
   const handleQuickExit = () => {
-    try {
-      sessionStorage.clear();
-    } catch {
-      /* noop */
-    }
-    window.location.replace("https://www.google.com/search?q=weather");
+    void (async () => {
+      await revokeCurrentChatSession();
+      try {
+        sessionStorage.clear();
+      } catch {
+        /* noop */
+      }
+      window.location.replace("https://www.google.com/search?q=weather");
+    })();
   };
 
   return (

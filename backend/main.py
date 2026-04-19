@@ -377,6 +377,15 @@ async def run_gemini_model(
     }
 
 
+@app.delete("/session/{session_id}", status_code=204)
+def delete_session(session_id: str) -> None:
+    """
+    Drops in-RAM session state (chat_history, crisis counters).
+    Idempotent; safe if the session never existed.
+    """
+    session_memory.pop(session_id, None)
+
+
 @app.post("/predict")
 def predict_emotion(message: UserMessage):
     """Endpoint diagnostyczny: surowy wynik SafetyService.analyze() bez Gemini i bez sesji."""
