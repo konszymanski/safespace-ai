@@ -34,7 +34,19 @@
     "thinkingAria": "AI myśli",
     "cleared": "Sesja wyczyszczona",
     "clearedDesc": "Wszystkie wiadomości zniknęły z tej karty.",
-    "error": "Coś poszło nie tak. Spróbuj jeszcze raz."
+    "error": "Coś poszło nie tak. Spróbuj jeszcze raz.",
+    "exportHeadline": "Zapisać rozmowę?",
+    "exportHint": "Pobierz kopię tego, co widać w tej karcie. Plik zostaje tylko na Twoim urządzeniu.",
+    "exportPrivacy": "Plik powstaje w przeglądarce — bez wysyłki rozmowy na serwer. Zapisujesz go tylko u siebie.",
+    "exportDownload": "Pobierz .txt",
+    "exportDismiss": "Ukryj przypomnienie",
+    "exportAria": "Opcjonalnie: pobierz rozmowę",
+    "exportTitle": "Safe Space — eksport rozmowy",
+    "exportGenerated": "Wygenerowano",
+    "exportRoleUser": "Ty",
+    "exportRoleAssistant": "Asystent",
+    "exportFooter": "Ten eksport jest tylko na Twój użytek. To nie jest porada medyczna ani psychologiczna. W razie zagrożenia życia skontaktuj się ze służbami ratunkowymi.",
+    "exportDone": "Pobieranie rozpoczęte"
   },
   "starters": [
     "Cześć. Jestem tu, żeby cię wysłuchać. Co dziś sprowadziło cię w to miejsce?",

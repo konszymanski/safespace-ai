@@ -4,8 +4,9 @@ import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import ChatBubble from "./ChatBubble";
 import ChatComposer from "./ChatComposer";
+import ExportChatPrompt from "./ExportChatPrompt";
 import ThinkingBubble from "./ThinkingBubble";
-import { ChatMessage, sendMessageMock } from "@/lib/mockApi";
+import { type ChatMessage, sendChatMessage } from "@/lib/mockApi";
 
 interface ChatViewProps {
   shreddingTick: number;
@@ -33,6 +34,7 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
   const [thinking, setThinking] = useState(false);
   const [shredding, setShredding] = useState(false);
+  const [exportPromptDismissed, setExportPromptDismissed] = useState(false);
   // True dopóki użytkownik nic nie napisał — pozwala odświeżyć powitanie po zmianie języka
   const [untouched, setUntouched] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,6 +56,7 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
     const timer = setTimeout(() => {
       setMessages([{ role: "assistant", content: pickStarter(t) }]);
       setUntouched(true);
+      setExportPromptDismissed(false);
       setShredding(false);
       toast.success(t("chat.cleared"), {
         description: t("chat.clearedDesc"),
@@ -69,8 +72,8 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
     setUntouched(false);
     setThinking(true);
     try {
-      const reply = await sendMessageMock(next);
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      const payload = await sendChatMessage(next);
+      setMessages((m) => [...m, { role: "assistant", content: payload.assistant_reply }]);
     } catch {
       toast.error(t("chat.error"));
     } finally {
@@ -89,6 +92,12 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
         </div>
       </div>
       <ChatComposer onSend={handleSend} disabled={thinking || shredding} />
+      <ExportChatPrompt
+        messages={messages}
+        dismissed={exportPromptDismissed}
+        shredding={shredding}
+        onDismiss={() => setExportPromptDismissed(true)}
+      />
     </main>
   );
 };
