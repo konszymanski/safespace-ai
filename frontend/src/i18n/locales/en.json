@@ -34,7 +34,19 @@
     "thinkingAria": "AI is thinking",
     "cleared": "Session cleared",
     "clearedDesc": "All messages have been wiped from this tab.",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "exportHeadline": "Save this chat?",
+    "exportHint": "Download a copy of what appears in this tab. The file stays on your device.",
+    "exportPrivacy": "We do not store this file. You save it only on your device.",
+    "exportDownload": "Download .txt",
+    "exportDismiss": "Hide this reminder",
+    "exportAria": "Optional: download conversation",
+    "exportTitle": "Safe Space — conversation export",
+    "exportGenerated": "Generated",
+    "exportRoleUser": "You",
+    "exportRoleAssistant": "Assistant",
+    "exportFooter": "This export is for your records only. It is not medical or psychological advice. If you are in danger, contact emergency services.",
+    "exportDone": "Download started"
   },
   "starters": [
     "Hi. I'm here to listen. What brought you here today?",
