@@ -1,8 +1,8 @@
-FROM python:3.12-slim
-
+# Optional standalone image (compose uses `node:22` + bind mount for dev).
+FROM node:22-bookworm-slim
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

@@ -4,6 +4,8 @@ transformers
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 pydantic
+google-genai
+python-dotenv
 accelerate
 python-dotenv
 google-genai

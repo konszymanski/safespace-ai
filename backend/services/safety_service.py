@@ -38,7 +38,7 @@ class SafetyService:
             top_k=None,
             device=-1
         )
-        print("✓ Emotion Transformer loaded.")
+        print("[OK] Emotion Transformer loaded.")
 
         self.phq9_map = {
             "anhedonia": ["interest", "pleasure", "hobbies", "bored", "nothing feels good", "don't care"],
