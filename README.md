@@ -1,44 +1,82 @@
-# hacknarok-fiatpandas
+# 🤖 AI Chat Platform "Safe Space"
 
-Czat wspierający (frontend Vite + React) z backendem FastAPI: lokalny model klasyfikacyjny + Gemini.
+## Content of Project
+* [General info](#-general-info)
+* [Technologies](#-technologies)
+* [Setup](#-setup)
+* [More detailed information about modules](#-more-detailed-information-about-modules)
+* [Application view](#-application-view)
+* [Authors](#-authors)
 
-## Wymagania
+---
 
-- [Docker](https://docs.docker.com/get-docker/) z **Docker Compose v2** (`docker compose`).
+## 📝 General info
+This project is a modern, full-stack AI chat platform designed for a seamless user experience. **It was originally developed as a project for a Hackathon (Hacknarök)**, focusing on rapid deployment, high-performance message rendering, and a polished UI. It combines a Python backend with a reactive frontend, featuring rich text rendering, real-time animations, and built-in internationalization.
 
-## Szybki start (Docker)
+---
 
-1. Sklonuj repozytorium i wejdź w katalog główny projektu (obok `docker-compose.yml`).
+## 💻 Technologies
+* **Frontend:** React 18, Vite, TypeScript
+* **Styling:** Tailwind CSS, Shadcn/UI
+* **Backend:** Python 3.10+, FastAPI
+* **Containerization:** Docker & Docker Compose
+* **Libraries:** React-Markdown, i18next (Multi-language support)
 
-2. Utwórz plik **`backend/.env`** z kluczem do Gemini (wzorzec: `backend/.env.example`):
+## ⚙️ Setup
+To run this project locally using Docker:
 
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
+```bash
+# Sklonuj projekt
+git clone [https://github.com/konszymanski/hacknarok-fiatpandas.git](https://github.com/konszymanski/hacknarok-fiatpandas.git)
 
-   (Windows PowerShell: `Copy-Item backend\.env.example backend\.env`)
+# Wejdź do katalogu
+cd hacknarok-fiatpandas
 
-   Uzupełnij `GEMINI_API_KEY=...`
+# Uruchom kontenery
+docker-compose up --build
+```
 
-3. Uruchom stack (pierwsze uruchomienie może chwilę trwać):
+## 🔍 More detailed information about modules
 
-   ```bash
-   docker compose up --build
-   ```
+### 🎨 Frontend Module (React & Vite)
 
-4. W przeglądarce:
+* State Management: Efficient handling of chat history and user input using React hooks.
 
-    **Frontend**  | http://localhost:5173          
-    **API (REST)**| http://localhost:8001        
-    **Swagger UI**| http://localhost:8001/docs     
+* Markdown Engine: Integrated react-markdown with remark-gfm to support GitHub-flavored markdown, including tables, task lists, and syntax highlighting for code blocks.
 
-Frontend ma ustawione `VITE_API_BASE_URL=http://localhost:8001` (w `docker-compose.yml`), więc przeglądarka na hoście woła API pod tym samym adresem.
+* Internationalization: Full i18next implementation allowing seamless switching between English and Polish.
 
-## Zatrzymanie
+* UI Components: Built using Shadcn/UI for a consistent and accessible design system.
 
-W terminalu: `Ctrl+C`, ewentualnie `docker compose down`. Named volume z `node_modules` frontu i cache HF zostają do kolejnego `up` (szybszy restart).
+### ⚙️ Backend Module (FastAPI)
 
-## Opcjonalnie: bez Dockera
+* Asynchronous Logic: Utilizing Python's asyncio to handle multiple concurrent chat requests without blocking.
 
-- Backend: katalog `backend/`, venv, `pip install -r requirements.txt`, zmienne z `backend/.env`, potem np. `uvicorn main:app --host 0.0.0.0 --port 8001 --reload`.
-- Frontend: katalog `frontend/`, `npm install`, `npm run dev` — domyślnie Vite pod `http://localhost:5173`; ustaw `VITE_API_BASE_URL` jeśli API nie jest na `http://127.0.0.1:8001`.
+* API Architecture: RESTful endpoints for message processing, health checks, and language configuration.
+
+* Security: CORS middleware configured for secure communication between the frontend and backend.
+
+### 🤖 AI & Logic Integration
+
+* Message Processing: Custom logic to simulate real-time AI "thinking" and streaming-like response delivery.
+
+* Animation Triggers: Backend-controlled flags that trigger the frontend "shredding" effect for secure chat clearing.
+
+## 🚀 Future Roadmap
+
+* Scalability: Transitioning to a microservices architecture and implementing Redis for high-speed message caching.
+
+* Monetization: Integrating Stripe API to support a "Pro" subscription model with advanced AI features.
+
+
+## 👥 Authors
+
+* Łukasz Spychała - Frontend  - https://github.com/Sercheedar
+
+* Łukasz Całka - Backend - https://github.com/LukaszCalka1
+
+* Tomasz Stępień - AI/ML - https://github.com/tomstepien
+
+* Konrad Szymański - AI/ML - https://github.com/konszymanski
+
+### Created with passion during a Hackathon challenge.
