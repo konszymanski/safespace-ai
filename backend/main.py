@@ -76,12 +76,12 @@ LEVEL_1_SECRET_INSTRUCTION = (
 # Fallback when Gemini cannot compose a personalized escalation reply (same as historical copy).
 EMERGENCY_MESSAGE = (
     "Our screening suggests you might benefit from talking to a person soon. "
-    "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
+    "If you feel your life or health is at risk, call emergency services (in the EU: 112, in Poland: 999). "
     "In Poland you can also reach the support line 116 123."
 )
 LEVEL_2_MESSAGE = (
     "Our screening suggests you might benefit from talking to a person soon. "
-    "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
+    "If you feel your life or health is at risk, call emergency services (in the EU: 112, in Poland: 999). "
     "In Poland you can also reach the support line 116 123."
 )
 PHQ9_TEST_NUDGE_THRESHOLD = 4
