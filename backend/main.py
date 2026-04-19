@@ -9,6 +9,7 @@ Flow główny (POST /chat):
 5. Jeśli nie ma blokady — budowa promptu z historią + CBT + opcjonalny system_prompt z frontu,
    wywołanie Gemini przez gemini_service, zapis odpowiedzi asystenta do historii.
 6. JSON z odpowiedzią, trybem safety, metrykami klasyfikatora i flagami akcji.
+   Przy EMERGENCY / LEVEL_2_BLOCK: najpierw stały komunikat (z numerami 112/116 123), potem Gemini dopisuje 1–2 zdania z XAI + clinical_metrics (drugie zdanie zachęty do PHQ-9 tylko gdy phq9_est ≥ 4); przy błędzie Gemini — sam szablon.
 7. Opcjonalnie XAI (perturbacje słów / zdania): gdy prob_1 >= XAI_RISK_THRESHOLD — tylko diagnostyka, bez wpływu na progi bezpieczeństwa.
 
 Uwagi: session_memory jest in-memory (reset przy restarcie procesu). USE_MOCK=True omija SafetyService.
@@ -72,9 +73,9 @@ LEVEL_1_SECRET_INSTRUCTION = (
     "Prioritize empathy, validation, and grounding techniques."
 )
 
-# User-facing assistant text when escalating instead of a normal Gemini reply.
+# Fallback when Gemini cannot compose a personalized escalation reply (same as historical copy).
 EMERGENCY_MESSAGE = (
-    "It sounds like you may be going through an extremely difficult time. "
+    "Our screening suggests you might benefit from talking to a person soon. "
     "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
     "In Poland you can also reach the support line 116 123."
 )
@@ -82,6 +83,13 @@ LEVEL_2_MESSAGE = (
     "Our screening suggests you might benefit from talking to a person soon. "
     "If you feel your life or health is at risk, call emergency services (in the EU: 112). "
     "In Poland you can also reach the support line 116 123."
+)
+PHQ9_TEST_NUDGE_THRESHOLD = 4
+CRISIS_REPLY_SYSTEM_INSTRUCTION = (
+    "You write very short, compassionate lines for a mental well-being app with automated screening. "
+    "Never diagnose or claim certainty about the user's condition. "
+    "Do not invent hotlines beyond what the user prompt allows. "
+    "Follow the output shape in the user message exactly: plain text only, no markdown, no bullets."
 )
 
 # --- Stan sesji w RAM (session_id -> punkty kryzysowe + historia wiadomości dla kontekstu Gemini) ---
@@ -377,6 +385,126 @@ async def run_gemini_model(
     }
 
 
+def _format_escalation_screening_notes(
+    classifier_result: dict[str, Any],
+    user_message: str,
+) -> str:
+    """Human-readable block for Gemini: XAI sentences + clinical tags (already computed)."""
+    clinical = classifier_result.get("clinical_metrics") or {}
+    if not isinstance(clinical, dict):
+        clinical = {}
+    symptoms = clinical.get("symptoms") or []
+    if not isinstance(symptoms, list):
+        symptoms = []
+    phq9_est = clinical.get("phq9_est", 0)
+    try:
+        phq9_int = int(phq9_est)
+    except (TypeError, ValueError):
+        phq9_int = 0
+
+    lines: list[str] = [
+        f"Heuristic PHQ-9-style estimate (not a diagnosis): {phq9_int}/27.",
+    ]
+    if symptoms:
+        lines.append("Screening-linked tags (keywords, not clinical labels): " + ", ".join(str(s) for s in symptoms))
+    else:
+        lines.append("No symptom tags from keyword screen.")
+
+    xai = classifier_result.get("xai")
+    top_rows: list[Any] = []
+    if isinstance(xai, dict):
+        top_rows = list(xai.get("top_risk_analysis") or [])[:5]
+
+    if top_rows:
+        lines.append("Highest local-model-risk sentences (with word-level hints):")
+        for i, row in enumerate(top_rows, start=1):
+            if not isinstance(row, dict):
+                continue
+            st = str(row.get("sentence_text", "")).strip()
+            sr = row.get("sentence_risk", 0)
+            words = row.get("top_dangerous_words") or []
+            if not isinstance(words, list):
+                words = []
+            tw_parts = []
+            for w in words[:5]:
+                if isinstance(w, dict):
+                    tw_parts.append(f"{w.get('word')} ({float(w.get('impact', 0)):+.4f})")
+            tw = ", ".join(tw_parts)
+            lines.append(f'  {i}. sentence_risk={sr}: "{st}"' + (f" | words: {tw}" if tw else ""))
+    else:
+        lines.append("No sentence-level explainability for this turn (risk below XAI threshold or XAI off).")
+
+    lines.append(f'User message (full): """{user_message.strip()}"""')
+    return "\n".join(lines)
+
+
+async def compose_escalation_reply_with_gemini(
+    safety_mode: str,
+    classifier_result: dict[str, Any],
+    user_message: str,
+) -> str | None:
+    """
+    One (or two if phq9_est >= PHQ9_TEST_NUDGE_THRESHOLD) Gemini sentences from screening notes.
+    Caller appends this block after the standard EMERGENCY / LEVEL_2 template (which already
+    includes helpline numbers). Returns None if generation fails.
+    """
+    clinical = classifier_result.get("clinical_metrics") or {}
+    if not isinstance(clinical, dict):
+        clinical = {}
+    try:
+        phq9_est = int(clinical.get("phq9_est", 0) or 0)
+    except (TypeError, ValueError):
+        phq9_est = 0
+    want_phq_nudge = phq9_est >= PHQ9_TEST_NUDGE_THRESHOLD
+
+    tier_label = (
+        "EMERGENCY (single-message acute risk flag)"
+        if safety_mode == "EMERGENCY"
+        else "LEVEL_2 (session risk accumulated past threshold)"
+    )
+    tone_hint = (
+        "Calm and direct; acknowledge seriousness without alarmism."
+        if safety_mode == "EMERGENCY"
+        else "Warm and steady; encourage reaching a real person or helpline soon."
+    )
+
+    notes = _format_escalation_screening_notes(classifier_result, user_message)
+    phq_rule = (
+        "Then add ONE more sentence on a new line: gently invite them to take the PHQ-9 questionnaire "
+        "in this wellbeing app when they feel ready — optional self-check, not a diagnosis and not an order. "
+        "Do not claim they are depressed."
+        if want_phq_nudge
+        else "Do not add any second sentence about questionnaires or PHQ-9."
+    )
+
+    prompt = (
+        f"SCREENING TIER: {tier_label}\n"
+        f"Tone: {tone_hint}\n\n"
+        f"--- Screening context (internal; do not recite as facts about the user) ---\n{notes}\n---\n\n"
+        "Write ONLY the user-visible lines below (plain text, no numbering, no markdown, no bullets):\n"
+        "Use the same language as the user's message when it is clearly one language (e.g. Polish, Ukrainian, English); "
+        "if mixed or unclear, use English.\n"
+        "Line 1: Exactly ONE short sentence (max ~45 words), empathetic and responsive to what they wrote. "
+        "Do not list symptom codes or model jargon; speak naturally. Do not include phone numbers.\n"
+        f"{phq_rule}\n"
+        "Output nothing before or after those line(s)."
+    )
+
+    raw = await asyncio.to_thread(
+        gemini_service.ask_gemini,
+        prompt,
+        CRISIS_REPLY_SYSTEM_INSTRUCTION,
+    )
+    if not isinstance(raw, str) or raw.startswith("Błąd:"):
+        if isinstance(raw, str) and raw.startswith("Błąd:"):
+            print(f"[Gemini escalation] {raw}", flush=True)
+        return None
+    body = raw.strip()
+    if not body:
+        return None
+    return body
+
+
 @app.delete("/session/{session_id}", status_code=204)
 def delete_session(session_id: str) -> None:
     """
@@ -516,11 +644,25 @@ async def chat(request: ChatRequest):
     # Protokół eskalacji: najpierw pojedynczy skrajny sygnał, potem skumulowana suma sesji.
     if instant_kill:
         safety_mode = "EMERGENCY"
-        assistant_reply = EMERGENCY_MESSAGE
+        composed = await compose_escalation_reply_with_gemini(
+            "EMERGENCY",
+            classifier_result,
+            request.message,
+        )
+        assistant_reply = (
+            f"{EMERGENCY_MESSAGE}\n\n{composed}" if composed is not None else EMERGENCY_MESSAGE
+        )
         should_trigger_task2 = True
     elif total_risk_score > LEVEL_2_THRESHOLD:
         safety_mode = "LEVEL_2_BLOCK"
-        assistant_reply = LEVEL_2_MESSAGE
+        composed = await compose_escalation_reply_with_gemini(
+            "LEVEL_2_BLOCK",
+            classifier_result,
+            request.message,
+        )
+        assistant_reply = (
+            f"{LEVEL_2_MESSAGE}\n\n{composed}" if composed is not None else LEVEL_2_MESSAGE
+        )
         should_trigger_task2 = True
     else:
         if total_risk_score > LEVEL_1_THRESHOLD:
