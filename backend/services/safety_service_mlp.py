@@ -30,6 +30,21 @@ class SafetyMLP(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+    def predict_proba(self, x):
+        self.eval()
+        with torch.no_grad():
+            if isinstance(x, np.ndarray):
+                x_tensor = torch.from_numpy(x).float()
+            else:
+                x_tensor = x.float()
+
+            if x_tensor.ndim == 1:
+                x_tensor = x_tensor.unsqueeze(0)
+
+            prob = self.forward(x_tensor)
+
+            prob_0 = 1 - prob
+            return torch.cat([prob_0, prob], dim=1).cpu().numpy()
 
 class SafetyServiceMLP:
     def __init__(self):
@@ -73,7 +88,7 @@ class SafetyServiceMLP:
         return re.sub(r'[^\w\s]', '', text).strip()
 
     @lru_cache(maxsize=128)
-    def _get_emotions(self, text):
+    def _get_cached_emotions(self, text):  # <--- Zmieniono nazwę
         res = self.emotion_clf(text[:512])[0]
         return {item['label']: item['score'] for item in res}
 
@@ -82,7 +97,7 @@ class SafetyServiceMLP:
             cleaned = self._clean_text(text)
             tfidf_feat = self.tfidf_vectorizer.transform([cleaned]).toarray()
 
-            ems = self._get_emotions(text)
+            ems = self._get_cached_emotions(text)
             em_order = ['sadness', 'joy', 'love', 'anger', 'fear', 'surprise']
             em_feat = np.array([ems.get(e, 0.0) for e in em_order]).reshape(1, -1)
 
