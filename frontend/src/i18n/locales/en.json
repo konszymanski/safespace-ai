@@ -96,11 +96,10 @@
     "crisis": "What you're writing matters deeply to me. Your life matters. Please call {{emergency}} or {{trustline}} (helpline) right now. You can also press the “Quick exit” button if you need to leave this page."
   },
   "emergency": {
-    "country": "United Kingdom / International",
+    "country": "",
     "lines": [
       { "number": "112 / 999", "label": "emergency number (life-threatening situations)" },
-      { "number": "116 123", "label": "Samaritans — 24/7 emotional support" },
-      { "number": "Text SHOUT to 85258", "label": "UK crisis text line" }
+      { "number": "116 123", "label": "Samaritans — 24/7 emotional support" }
     ]
   }
 }
