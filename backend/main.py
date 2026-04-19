@@ -40,16 +40,16 @@ app.add_middleware(
 )
 
 # --- Progi „Crisis Points” i instant kill (prob_1 z lokalnego modelu) ---
-LEVEL_1_THRESHOLD = 1.0
-LEVEL_2_THRESHOLD = 2.5
-INSTANT_KILL_THRESHOLD = 0.98
-# Gdy prediction==0, pole `confidence` to pewność klasy 0 (czyli prob_0).
-# Jeśli model jest „pewny pozytywnie” (>= tego progu), odejmujemy mały kredyt od sumy ryzyka sesji.
-POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD = 0.9
+LEVEL_1_THRESHOLD = 1.25
+LEVEL_2_THRESHOLD = 2.6
+INSTANT_KILL_THRESHOLD = 0.94
+# Gdy prediction==0, pole `confidence` to prob_0 — odejmujemy od sumy sesji, gdy prob_0 jest wystarczająco wysokie.
+# 0.7 zamiast 0.9: przy waszym modelu rzadko macie prob_0 ≥ 0.9, więc ulga praktycznie się nie zdarzała.
+POSITIVE_MESSAGE_CONFIDENCE_THRESHOLD = 0.7
 POSITIVE_MESSAGE_DECREMENT = 0.2
 USE_MOCK = False
 # Poniżej tego progu pomijamy get_full_analysis (dziesiątki wywołań RF + emocje na wariantach tekstu).
-XAI_RISK_THRESHOLD = 0.3
+XAI_RISK_THRESHOLD = 0.5
 # Tekst pod pole `safety_insights` — tłumaczy warstwę **API (main)**, bez duplikowania inferencji z SafetyService.
 SAFETY_INSIGHTS_FLOW_PL = [
     "SafetyService.analyze() daje risk_score; run_local_classifier mapuje go na prob_1 (prob_0 = 1 − prob_1).",
@@ -493,6 +493,8 @@ async def chat(request: ChatRequest):
     # Lokalna analiza zawsze; wywołanie Gemini jest pomijane przy EMERGENCY / LEVEL_2_BLOCK.
     classifier_result = await run_local_classifier(request.message)
 
+    # analyze() zwraca risk_score + clinical_metrics; run_local_classifier mapuje to na jednolity JSON:
+    # prob_1 ≡ risk_score, prob_0 = 1−prob_1, prediction = 1 iff prob_1 ≥ 0.5, confidence = prob_1 albo prob_0.
     prediction = int(classifier_result["prediction"])
     confidence = float(classifier_result["confidence"])
     prob_0 = float(classifier_result["prob_0"])

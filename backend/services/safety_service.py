@@ -10,11 +10,16 @@ os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
+# Resolve artifacts relative to this package (…/backend/), not process cwd (uvicorn / Docker WORKDIR).
+_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DEFAULT_MODELS_PKL = os.path.join(_BACKEND_ROOT, "ml", "local_models", "safety_models.pkl")
+_DEFAULT_LEGACY_PKL = os.path.join(_BACKEND_ROOT, "ml", "local_models", "safety_model.pkl")
+
 
 class SafetyService:
-    def __init__(self, model_path='../ml/local_models/safety_models.pkl'):
-        new_model_path = model_path
-        old_model_path = '../ml/local_models/safety_model.pkl'
+    def __init__(self, model_path: str | None = None):
+        new_model_path = model_path or _DEFAULT_MODELS_PKL
+        old_model_path = _DEFAULT_LEGACY_PKL
         
         if os.path.exists(new_model_path):
             with open(new_model_path, 'rb') as f:
