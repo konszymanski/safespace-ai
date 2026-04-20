@@ -1,32 +1,29 @@
 import torch
 import torch.nn as nn
-import joblib
+import pickle
 import re
 import os
 import numpy as np
 from transformers import pipeline
 from functools import lru_cache
 
-
 class SafetyMLP(nn.Module):
     def __init__(self, input_size):
         super(SafetyMLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(input_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.4),
+            nn.Linear(input_size, 512),
+            nn.GELU(),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.15),
 
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Linear(512, 128),
+            nn.GELU(),
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.15),
 
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(128, 1),
             nn.Sigmoid()
         )
-
     def forward(self, x):
         return self.layers(x)
 
@@ -42,86 +39,118 @@ class SafetyMLP(nn.Module):
                 x_tensor = x_tensor.unsqueeze(0)
 
             prob = self.forward(x_tensor)
-
             prob_0 = 1 - prob
             return torch.cat([prob_0, prob], dim=1).cpu().numpy()
 
+
 class SafetyServiceMLP:
     def __init__(self):
-        print("--- Initializing Neural Safety Service (MLP + DistilBERT) ---")
+        print("--- Initializing Neural Safety Service (MLP + GoEmotions) ---")
 
-        # Ścieżki dynamiczne
         base_path = os.path.join(os.path.dirname(__file__), '..', 'ml', 'local_models')
+        pkl_path = os.path.join(base_path, 'safety_mlp_new_bert.pkl')
+        pth_path = os.path.join(base_path, 'safety_mlp_new_bert.pth')
 
         try:
-            self.tfidf_vectorizer = joblib.load(os.path.join(base_path, 'tfidf_vectorizer.pkl'))
-            self.scaler = joblib.load(os.path.join(base_path, 'scaler.pkl'))
+            if not os.path.exists(pkl_path):
+                raise FileNotFoundError(f"Brak pliku .pkl w: {pkl_path}")
 
-            input_dim = len(self.tfidf_vectorizer.get_feature_names_out()) + 6
-            self.combined_model = SafetyMLP(input_dim)
-            self.combined_model.load_state_dict(torch.load(os.path.join(base_path, 'safety_mlp.pth')))
-            self.combined_model.eval()
+            with open(pkl_path, 'rb') as f:
+                config_dict = pickle.load(f)
 
-            self.emotion_clf = pipeline("text-classification",
-                                        model="bhadresh-savani/distilbert-base-uncased-emotion",
-                                        top_k=None, device=-1)
+            self.emotion_cols = config_dict.get('emotion_cols')
+            if not self.emotion_cols:
+                raise ValueError("Plik .pkl nie zawiera klucza 'emotion_cols'!")
+
+            if not os.path.exists(pth_path):
+                raise FileNotFoundError(f"Brak wag .pth w: {pth_path}")
+
+            self.model = SafetyMLP(input_size=len(self.emotion_cols))
+            self.model.load_state_dict(torch.load(pth_path, map_location=torch.device('cpu')))
+            self.model.eval()
+
+            self.emotion_classifier = pipeline(
+                "text-classification",
+                model="monologg/bert-base-cased-goemotions-original",
+                top_k=None,
+                device=-1
+            )
 
             self.phq9_map = {
+
                 "anhedonia": ["interest", "pleasure", "hobbies", "bored", "nothing feels good", "don't care"],
+
                 "depressed_mood": ["sad", "hopeless", "depressed", "miserable", "down", "crying", "blue"],
+
                 "sleep_issues": ["sleep", "insomnia", "waking up", "oversleeping", "can't sleep", "restless"],
+
                 "energy_loss": ["tired", "no energy", "exhausted", "fatigue", "drained", "heavy"],
+
                 "appetite_issues": ["appetite", "eating", "hungry", "food", "weight", "binge", "starving"],
+
                 "low_self_esteem": ["failure", "let down", "useless", "worthless", "hate myself", "disappointed"],
+
                 "concentration": ["focus", "concentrating", "distracted", "brain fog", "can't think", "reading"],
+
                 "psychomotor": ["slow", "moving slow", "jittery", "pacing", "restless", "fidgeting"],
-                "suicidal_ideation": ["die", "suicide", "end it", "kill myself", "hurt myself", "better off dead"]
+
+                "suicidal_ideation": ["die", "suicide", "end it", "kill myself", "hurt myself", "better off dead",
+
+                                      "want to die", "no reason to live", "end my life", "final goodbye",
+
+                                      "never wake up", "fall asleep forever", "sleep forever", "disappear",
+
+                                      "not worth living", "wish i was dead", "want to end it", "end it tonight",
+
+                                      "goodbye forever", "last goodbye", "final note", "ending it",
+
+                                      "can't take this anymore", "no point in living", "better off without me",
+
+                                      "world better without me", "family better without me", "everyone better off",
+
+                                      "pills to sleep forever", "find some pills", "sleep forever",
+
+                                      "tired of existing", "ghost watching", "fade away", "nothing numb",
+
+                                      "lock the door", "write notes", "ending it tonight"]
+
             }
 
-            print("✓ Neural Engine & Transformer loaded successfully.")
+            print(f"✓ Neural Engine Ready. Features: {len(self.emotion_cols)}")
+
         except Exception as e:
             print(f"❌ Initialization failed: {e}")
             raise
 
-    def _clean_text(self, text):
-        text = text.lower()
-        return re.sub(r'[^\w\s]', '', text).strip()
-
     @lru_cache(maxsize=128)
-    def _get_cached_emotions(self, text):  # <--- Zmieniono nazwę
-        res = self.emotion_clf(text[:512])[0]
+    def _get_cached_emotions(self, text):
+        res = self.emotion_classifier(text[:512])[0]
         return {item['label']: item['score'] for item in res}
+
+    def _prepare_vector(self, text):
+        ems = self._get_cached_emotions(text)
+        return np.array([ems.get(col, 0.0) for col in self.emotion_cols]).reshape(1, -1)
 
     def get_risk_score(self, text):
         try:
-            cleaned = self._clean_text(text)
-            tfidf_feat = self.tfidf_vectorizer.transform([cleaned]).toarray()
-
-            ems = self._get_cached_emotions(text)
-            em_order = ['sadness', 'joy', 'love', 'anger', 'fear', 'surprise']
-            em_feat = np.array([ems.get(e, 0.0) for e in em_order]).reshape(1, -1)
-
-            combined = np.hstack([tfidf_feat, em_feat])
-            scaled = self.scaler.transform(combined)
-
-            with torch.no_grad():
-                tensor_input = torch.FloatTensor(scaled)
-                output = self.combined_model(tensor_input)
-                score = output.item()
-
-            return round(float(score), 4)
-
+            vector = self._prepare_vector(text)
+            probs = self.model.predict_proba(vector)
+            return round(float(probs[0][1]), 4)
         except Exception as e:
-            print(f"❌ ERROR in get_risk_score: {e}")
+            print(f"❌ Error in get_risk_score: {e}")
             return 0.0
 
     def analyze(self, text):
         risk_score = self.get_risk_score(text)
+        text_lower = text.lower()
 
         detected_symptoms = [
             s for s, keywords in self.phq9_map.items()
-            if any(re.search(rf'\b{re.escape(word)}\b', text.lower()) for word in keywords)
+            if any(re.search(rf'\b{re.escape(word)}\b', text_lower) for word in keywords)
         ]
+
+        if "suicidal_ideation" in detected_symptoms:
+            risk_score = max(risk_score, 0.85)
 
         return {
             "risk_score": risk_score,

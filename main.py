@@ -4,9 +4,10 @@ import sys
 # Fix dla Maca
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-# Importy Twoich serwisów
 try:
+    from backend.services.safety_service_mlp import SafetyMLP
     from backend.services.safety_service_mlp import SafetyServiceMLP
+    from backend.services.safety_service import SafetyService
     from backend.services.xai_service import XAIService
 
     print("✓ Services import successful.")
@@ -18,7 +19,7 @@ except ImportError as e:
 def run_test():
     print("1. Starting initialization...")
     try:
-        brain = SafetyServiceMLP()
+        brain = SafetyService()
         xai = XAIService(safety_service=brain)
         print("2. System initialized successfully!\n")
     except Exception as e:
@@ -81,7 +82,7 @@ def run_test():
         print(f"Risk Score: {result['risk_score']}")
         print(f"Safe status: {'✅ SAFE' if result['is_safe'] else '🚨 DANGER'}")
 
-        emotions = brain._get_cached_emotions(text) if hasattr(brain, '_get_cached_emotions') else {}
+        emotions = result.get('emotions_snapshot', {})
         top_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)[:3]
         print(f"Dominant Emotions: {top_emotions}")
 
@@ -89,12 +90,12 @@ def run_test():
             print(f"\n[EXPLAINABLE AI ANALYSIS]")
             explanation = xai.get_full_analysis(text)
 
-            for entry in explanation['top_risk_analysis']:
+            for entry in explanation['top_sentence_analysis']:
                 print(f"-> Dangerous Sentence: \"{entry['sentence_text']}\"")
                 print(f"   Sentence Risk: {entry['sentence_risk']}")
 
                 if entry['top_dangerous_words']:
-                    words_str = ", ".join([f"{w['word']} (+{w['impact']})" for w in entry['top_dangerous_words']])
+                    words_str = ", ".join([f"{w['word']} ({w['impact']})" for w in entry['top_dangerous_words']])
                     print(f"   Trigger Words: {words_str}")
                 else:
                     print(f"   Trigger Words: None (contextual risk)")
