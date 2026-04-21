@@ -13,3 +13,5 @@ uvicorn
 python-dotenv
 requests
 tqdm
+matplotlib
+scikit-optimize
