@@ -1,82 +1,133 @@
-# 🤖 AI Chat Platform "Safe Space"
+# SafeSpace: Well-being Chat with Safety Gating
 
-## Content of Project
-* [General info](#-general-info)
-* [Technologies](#-technologies)
-* [Setup](#-setup)
-* [More detailed information about modules](#-more-detailed-information-about-modules)
-* [Application view](#-application-view)
-* [Authors](#-authors)
+SafeSpace is a hackathon-born full-stack app that combines:
+- a multilingual wellbeing chat UI,
+- a local safety classifier (risk scoring + symptom heuristics),
+- and Gemini-generated supportive responses.
 
----
+The project is designed to support users in emotional distress while applying escalation rules when risk signals are detected.
 
-## 📝 General info
-This project is a modern, full-stack AI chat platform designed for a seamless user experience. **It was originally developed as a project for a Hackathon (Hacknarök)**, focusing on rapid deployment, high-performance message rendering, and a polished UI. It combines a Python backend with a reactive frontend, featuring rich text rendering, real-time animations, and built-in internationalization.
+## What the App Does
 
----
+- Shows a mandatory disclaimer and emergency information before chat.
+- Stores chat session ID in the browser and keeps session state in backend RAM.
+- Classifies each user message with a local model to estimate risk.
+- Applies session-based crisis point thresholds:
+  - `LEVEL_1_SUPPORT` (supportive tone adjustment)
+  - `LEVEL_2_BLOCK` (standard escalation message + optional short Gemini add-on)
+  - `EMERGENCY` (instant escalation for very high single-message risk)
+- Offers privacy-oriented UX features:
+  - quick exit redirect,
+  - chat clear/shred animation,
+  - server-side session revoke endpoint.
 
-## 💻 Technologies
-* **Frontend:** React 18, Vite, TypeScript
-* **Styling:** Tailwind CSS, Shadcn/UI
-* **Backend:** Python 3.10+, FastAPI
-* **Containerization:** Docker & Docker Compose
-* **Libraries:** React-Markdown, i18next (Multi-language support)
+## Authors
 
-## ⚙️ Setup
-To run this project locally using Docker:
+- Łukasz Spychała (Frontend): https://github.com/Sercheedar
+- Łukasz Całka (Backend): https://github.com/LukaszCalka1
+- Tomasz Stępień (AI/ML): https://github.com/tomstepien
+- Konrad Szymański (AI/ML): https://github.com/konszymanski
 
+## Architecture
+
+### Frontend
+
+- Stack: React 18 + TypeScript + Vite + Tailwind + shadcn/ui.
+- Main flow:
+  - disclaimer gate,
+  - top safety bar with language switcher and quick exit,
+  - chat area with starter prompts and assistant replies.
+- API integration lives in `frontend/src/lib/mockApi.ts`.
+
+### Backend
+
+- Stack: FastAPI.
+- Main endpoint: `POST /chat`.
+- Core logic in `backend/main.py`:
+  - local classification,
+  - risk accumulation by `session_id`,
+  - escalation mode selection,
+  - Gemini call (when not blocked by escalation policy),
+  - optional safety insights payload.
+
+### Safety + AI Services
+
+- `backend/services/safety_service.py`
+  - loads local model artifacts,
+  - computes `risk_score` 
+  - adds heuristic clinical metrics (`symptoms`, `phq9_est`),
+  - uses emotion classifier from Hugging Face transformers.
+- `backend/services/xai_service.py`
+  - optional explainability (sentence impact).
+- `backend/services/gemini_service.py`
+  - wraps Gemini API calls,
+  - loads system prompt from `docs/prompts/system_prompt.txt`.
+
+## Safety Flow (per message)
+
+1. User message is appended to in-memory session history.
+2. Local classifier returns `prob_1`/`prob_0`, prediction, and clinical metrics.
+3. Backend computes session `crisis_delta` and updates `total_risk_score`.
+4. Mode is selected:
+   - `EMERGENCY` if single-message risk exceeds instant threshold,
+   - `LEVEL_2_BLOCK` if session total exceeds level 2,
+   - `LEVEL_1_SUPPORT` if session total exceeds level 1,
+   - `NORMAL` otherwise.
+5. Response is generated:
+   - escalation templates for `EMERGENCY` / `LEVEL_2_BLOCK`,
+   - Gemini response for `NORMAL` / `LEVEL_1_SUPPORT`.
+
+Important: backend session memory is in RAM only and resets on server restart.
+
+## API Overview
+
+- `POST /chat` - main chat endpoint.
+- `POST /predict` - raw local safety analysis for one message.
+- `POST /debug/safety-insights` - debug snapshot of classifier fields.
+- `POST /debug/crisis-simulate` - simulates crisis point accumulation without chat history.
+- `GET /debug/crisis-state/{session_id}` - reads current crisis counters.
+- `DELETE /session/{session_id}` - clears in-memory state for a session.
+
+## Run with Docker (recommended)
+
+### Clone the project
 ```bash
-# Sklonuj projekt
-git clone [https://github.com/konszymanski/hacknarok-fiatpandas.git](https://github.com/konszymanski/hacknarok-fiatpandas.git)
+git clone [https://github.com/konszymanski/hacknarok-fiatpandas.git]
+```
 
-# Wejdź do katalogu
+### Enter the directory
+```bash
 cd hacknarok-fiatpandas
+```
 
-# Uruchom kontenery
+### Build containers
+```bash
 docker-compose up --build
 ```
 
-## 🔍 More detailed information about modules
+Services:
 
-### 🎨 Frontend Module (React & Vite)
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8001`
 
-* State Management: Efficient handling of chat history and user input using React hooks.
+## Environment Variables
 
-* Markdown Engine: Integrated react-markdown with remark-gfm to support GitHub-flavored markdown, including tables, task lists, and syntax highlighting for code blocks.
+Backend expects `GEMINI_API_KEY` in `backend/.env`.
 
-* Internationalization: Full i18next implementation allowing seamless switching between English and Polish.
+Minimal example:
 
-* UI Components: Built using Shadcn/UI for a consistent and accessible design system.
+```env
+GEMINI_API_KEY=your_api_key_here
+```
 
-### ⚙️ Backend Module (FastAPI)
+Frontend can override API URL with:
 
-* Asynchronous Logic: Utilizing Python's asyncio to handle multiple concurrent chat requests without blocking.
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8001
+```
 
-* API Architecture: RESTful endpoints for message processing, health checks, and language configuration.
+## Known Limitations
 
-* Security: CORS middleware configured for secure communication between the frontend and backend.
-
-### 🤖 AI & Logic Integration
-
-* Message Processing: Custom logic to simulate real-time AI "thinking" and streaming-like response delivery.
-
-* Animation Triggers: Backend-controlled flags that trigger the frontend "shredding" effect for secure chat clearing.
-
-## 🚀 Future Roadmap
-
-* Scalability: Transitioning to a microservices architecture and implementing Redis for high-speed message caching.
-
-* Monetization: Integrating Stripe API to support a "Pro" subscription model with advanced AI features.
-
-
-## 👥 Authors
-
-* Łukasz Spychała - Frontend  - https://github.com/Sercheedar
-
-* Łukasz Całka - Backend - https://github.com/LukaszCalka1
-
-* Tomasz Stępień - AI/ML - https://github.com/tomstepien
-
-* Konrad Szymański - AI/ML - https://github.com/konszymanski
-
-### Created with passion during a Hackathon challenge.
+- Session state is not persistent (RAM only).
+- Some docs files are placeholders and do not yet reflect full behavior.
+- Safety heuristics are not a medical diagnosis and should not be treated as clinical decision support.
