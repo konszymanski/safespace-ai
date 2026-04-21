@@ -34,8 +34,58 @@
     "thinkingAria": "AI is thinking",
     "cleared": "Session cleared",
     "clearedDesc": "All messages have been wiped from this tab.",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "exportHeadline": "Save this chat?",
+    "exportHint": "Download a copy of what appears in this tab. The file stays on your device.",
+    "exportPrivacy": "We do not store this file. You save it only on your device.",
+    "exportDownload": "Download .txt",
+    "exportDismiss": "Hide this reminder",
+    "exportAria": "Optional: download conversation",
+    "exportTitle": "Safe Space — conversation export",
+    "exportGenerated": "Generated",
+    "exportRoleUser": "You",
+    "exportRoleAssistant": "Assistant",
+    "exportFooter": "This export is for your records only. It is not medical or psychological advice. If you are in danger, contact emergency services.",
+    "exportDone": "Download started"
   },
+  "starters": [
+    "Hi. I'm here to listen. What brought you here today?",
+    "Welcome. There's no rush and no need to choose the right words — where would you like to start?",
+    "Hey. How are you really feeling today — not the polite „I'm fine” version?",
+    "Hi. What's sitting with you most strongly today?",
+    "Welcome to a safe space. What would you like to get off your chest today?",
+    "Hey. If you had to name what you're feeling right now in one word, what word would it be?",
+    "Hi. What brought you here today specifically — and not on another day?",
+    "Welcome. Is there something you haven't had anyone to tell in a long time?",
+    "Hey. What's been going on with you lately — inside, not on the surface?",
+    "Hi. Tell me what kind of day you're having — even if it's hard to describe.",
+    "Welcome. What would you like someone to hear from you today?",
+    "Hey. Is there something weighing on you that won't leave you alone?",
+    "Hi. Where do you want to start — with what you feel, or with what happened?",
+    "Welcome. Is your head quiet right now, or very loud?",
+    "Hey. What was the hardest moment of your day?",
+    "Hi. Is there a thought that keeps coming back to you more often than others?",
+    "Welcome. What would you like to understand about yourself, if there were room for it today?",
+    "Hey. What are you arriving with — a specific situation, or a foggy feeling?",
+    "Hi. Has anything surprised you lately — about yourself or someone else?",
+    "Welcome. What would be the best possible outcome of our conversation for you?",
+    "Hey. How is your body responding to today — where do you feel tension?",
+    "Hi. Is there something you're afraid to say out loud?",
+    "Welcome. What was a small bright spot today, even if everything else was heavy?",
+    "Hey. What's been draining the most energy from you lately?",
+    "Hi. If your feelings could say something to you, what would it be?",
+    "Welcome. Is there a topic you've been avoiding that you'd like to touch today?",
+    "Hey. What in you needs the most attention right now?",
+    "Hi. Tell me about one thing happening in your life that you'd like to think out loud about.",
+    "Welcome. What are you missing the most today?",
+    "Hey. What happens inside you when you're left alone with yourself?",
+    "Hi. If you could feel anything other than what you feel right now, what would it be?",
+    "Welcome. What would you like your head to finally let go of?",
+    "Hey. What have you been telling yourself most often lately — and would you like that to change?",
+    "Hi. What was the moment today when you thought „I've had enough”?",
+    "Welcome. Is there a relationship that's occupying your mind today?",
+    "Hey. What would help you feel a little less alone in this right now?"
+  ],
   "mock": {
     "replies": [
       "I hear you. What you're describing sounds really heavy. Would you like to tell me more about what you're feeling right now?",
@@ -46,11 +96,10 @@
     "crisis": "What you're writing matters deeply to me. Your life matters. Please call {{emergency}} or {{trustline}} (helpline) right now. You can also press the “Quick exit” button if you need to leave this page."
   },
   "emergency": {
-    "country": "United Kingdom / International",
+    "country": "",
     "lines": [
       { "number": "112 / 999", "label": "emergency number (life-threatening situations)" },
-      { "number": "116 123", "label": "Samaritans — 24/7 emotional support" },
-      { "number": "Text SHOUT to 85258", "label": "UK crisis text line" }
+      { "number": "116 123", "label": "Samaritans — 24/7 emotional support" }
     ]
   }
 }

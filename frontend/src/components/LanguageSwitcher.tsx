@@ -38,20 +38,30 @@ const LanguageSwitcher = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="rounded-2xl">
-        {SUPPORTED_LANGUAGES.map((lng) => (
-          <DropdownMenuItem
-            key={lng}
-            onSelect={() => i18n.changeLanguage(lng)}
-            className="rounded-xl gap-2 cursor-pointer"
-            aria-current={lng === safeCurrent ? "true" : undefined}
-          >
-            <span aria-hidden="true">{FLAGS[lng]}</span>
-            <span className="flex-1">{t(`language.${lng}`)}</span>
-            {lng === safeCurrent && (
-              <span className="text-xs text-primary">●</span>
-            )}
-          </DropdownMenuItem>
-        ))}
+        {SUPPORTED_LANGUAGES.map((lng) => {
+          const isDisabled = lng !== "en";
+          return (
+            <DropdownMenuItem
+              key={lng}
+              disabled={isDisabled}
+              onSelect={(e) => {
+                if (isDisabled) {
+                  e.preventDefault();
+                  return;
+                }
+                i18n.changeLanguage(lng);
+              }}
+              className="rounded-xl gap-2 cursor-pointer data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[disabled]:text-muted-foreground"
+              aria-current={lng === safeCurrent ? "true" : undefined}
+            >
+              <span aria-hidden="true">{FLAGS[lng]}</span>
+              <span className="flex-1">{t(`language.${lng}`)}</span>
+              {lng === safeCurrent && (
+                <span className="text-xs text-primary">●</span>
+              )}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
