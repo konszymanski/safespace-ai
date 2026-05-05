@@ -34,7 +34,8 @@
     "thinkingAria": "AI myśli",
     "cleared": "Sesja wyczyszczona",
     "clearedDesc": "Wszystkie wiadomości zniknęły z tej karty.",
-    "error": "Coś poszło nie tak. Spróbuj jeszcze raz."
+    "error": "Coś poszło nie tak. Spróbuj jeszcze raz.",
+    "breakSuggestion": "Wygląda na to, że rozmawiamy już jakiś czas. Może warto zrobić przerwę? Pamiętaj, że zawsze możesz porozmawiać z prawdziwym człowiekiem, jeśli potrzebujesz wsparcia. Jak się czujesz?"
   },
   "mock": {
     "replies": [

@@ -34,7 +34,8 @@
     "thinkingAria": "AI is thinking",
     "cleared": "Session cleared",
     "clearedDesc": "All messages have been wiped from this tab.",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "breakSuggestion": "It looks like we've been talking for a while. Maybe it's worth taking a break? Remember, you can always talk to a real person if you need support. How are you feeling?"
   },
   "mock": {
     "replies": [

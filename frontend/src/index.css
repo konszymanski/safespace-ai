@@ -120,22 +120,23 @@
 @keyframes shred {
   0% {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-    transform: translateY(0) skewX(0);
-    filter: blur(0);
+    transform: translateY(0);
+    filter: blur(0) brightness(1);
     opacity: 1;
   }
-  40% {
-    filter: blur(1px);
+  30% {
+    filter: blur(2px) brightness(1.1);
+    opacity: 0.9;
+  }
+  60% {
+    filter: blur(5px) brightness(1.2);
+    opacity: 0.5;
+    transform: translateY(15px);
   }
   100% {
-    clip-path: polygon(
-      0 0, 5% 100%, 10% 0, 15% 100%, 20% 0, 25% 100%, 30% 0,
-      35% 100%, 40% 0, 45% 100%, 50% 0, 55% 100%, 60% 0,
-      65% 100%, 70% 0, 75% 100%, 80% 0, 85% 100%, 90% 0,
-      95% 100%, 100% 0
-    );
-    transform: translateY(40px) skewX(-3deg);
-    filter: blur(8px);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: translateY(30px);
+    filter: blur(12px) brightness(1.5);
     opacity: 0;
   }
 }

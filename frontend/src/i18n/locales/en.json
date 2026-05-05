@@ -46,7 +46,11 @@
     "exportRoleUser": "You",
     "exportRoleAssistant": "Assistant",
     "exportFooter": "This export is for your records only. It is not medical or psychological advice. If you are in danger, contact emergency services.",
-    "exportDone": "Download started"
+    "exportDone": "Download started",
+    "misread": "That's not what I meant",
+    "misreadAria": "Tell the AI it misread your emotions",
+    "misreadMessage": "That's not what I meant — I think you misread my emotions. Please try again and don't assume.",
+    "breakSuggestion": "We've been talking for a while. Remember — I'm only an AI and I can't replace a real person. This might be a good moment for a short break: drink some water, take a few breaths, and if you can — call someone close to you or a helpline. We can come back to this whenever you want."
   },
   "starters": [
     "Hi. I'm here to listen. What brought you here today?",

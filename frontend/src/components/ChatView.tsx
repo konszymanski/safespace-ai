@@ -37,6 +37,8 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
   const [exportPromptDismissed, setExportPromptDismissed] = useState(false);
   // True dopóki użytkownik nic nie napisał — pozwala odświeżyć powitanie po zmianie języka
   const [untouched, setUntouched] = useState(true);
+  const [interactionStartTime, setInteractionStartTime] = useState<Date | null>(null);
+  const [breakSuggested, setBreakSuggested] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Po zmianie języka wylosuj nowe powitanie, jeśli rozmowa jeszcze się nie zaczęła
@@ -49,6 +51,23 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, thinking]);
+
+  // Timer dla sugestii przerwy po 30 minutach interakcji
+  useEffect(() => {
+    if (interactionStartTime && !breakSuggested) {
+      const timer = setTimeout(() => {
+        const breakMessage: ChatMessage = {
+          role: "assistant",
+          content: t("chat.breakSuggestion", {
+            defaultValue: "Wygląda na to, że rozmawiamy już jakiś czas. Może warto zrobić przerwę? Pamiętaj, że zawsze możesz porozmawiać z prawdziwym człowiekiem, jeśli potrzebujesz wsparcia. Jak się czujesz?"
+          })
+        };
+        setMessages(prev => [...prev, breakMessage]);
+        setBreakSuggested(true);
+      }, 30 * 60 * 1000); // 30 minut
+      return () => clearTimeout(timer);
+    }
+  }, [interactionStartTime, breakSuggested, t]);
 
   useEffect(() => {
     if (shreddingTick === 0) return;
@@ -66,10 +85,25 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shreddingTick]);
 
+  const handleMisread = () => {
+    // Dodaj wiadomość informującą o błędnym rozpoznaniu
+    const misreadMessage: ChatMessage = {
+      role: "user",
+      content: "To nie to, o co mi chodziło. Proszę o reset kontekstu emocjonalnego."
+    };
+    setMessages(prev => [...prev, misreadMessage]);
+    // Opcjonalnie, zresetuj timer lub coś
+    setBreakSuggested(false);
+    setInteractionStartTime(null);
+  };
+
   const handleSend = async (text: string) => {
     const next: ChatMessage[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setUntouched(false);
+    if (!interactionStartTime) {
+      setInteractionStartTime(new Date());
+    }
     setThinking(true);
     try {
       const payload = await sendChatMessage(next);
@@ -86,7 +120,14 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-6" aria-live="polite">
         <div className="max-w-3xl mx-auto flex flex-col gap-4">
           {messages.map((m, i) => (
-            <ChatBubble key={i} role={m.role} content={m.content} shredding={shredding && i > 0} />
+            <ChatBubble
+              key={i}
+              role={m.role}
+              content={m.content}
+              shredding={shredding && i > 0}
+              showMisreadAction={m.role === "assistant" && i > 0}
+              onMisread={handleMisread}
+            />
           ))}
           {thinking && <ThinkingBubble />}
         </div>
