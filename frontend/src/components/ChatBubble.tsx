@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-import { Sparkles } from "lucide-react";
+import { Sparkles, RefreshCcw, AlertTriangle } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
 
@@ -15,6 +15,10 @@ interface ChatBubbleProps {
   content: string;
 
   shredding?: boolean;
+
+  /** Pokaż przycisk „to nie to, o co mi chodziło” pod dymkiem AI */
+  showMisreadAction?: boolean;
+  onMisread?: () => void;
 
 }
 
@@ -40,7 +44,7 @@ const assistantMarkdownClass =
 
 
 
-const ChatBubble = ({ role, content, shredding }: ChatBubbleProps) => {
+const ChatBubble = ({ role, content, shredding, showMisreadAction, onMisread }: ChatBubbleProps) => {
 
   const isUser = role === "user";
 
@@ -118,6 +122,16 @@ const ChatBubble = ({ role, content, shredding }: ChatBubbleProps) => {
 
       </div>
 
+      {showMisreadAction && !isUser && (
+        <button
+          onClick={onMisread}
+          className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          title="To nie to, o co mi chodziło"
+        >
+          <AlertTriangle className="h-3 w-3" />
+          To nie to, o co mi chodziło
+        </button>
+      )}
     </div>
 
   );

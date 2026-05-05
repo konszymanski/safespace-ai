@@ -192,13 +192,35 @@ export async function sendChatMessage(history: ChatMessage[]): Promise<ChatApiPa
 
 }
 
+// Komunikat „źle odczytałeś moje emocje" — wysyłany przyciskiem w UI
+const MISREAD_PATTERNS: RegExp[] = [
+  /to nie to, o co mi chodziło/i,
+  /that's not what i meant/i,
+  /це не те, що я мав/i,
+];
 
+const MISREAD_REPLIES: Record<string, string> = {
+  pl: "Dziękuję, że mi to mówisz — masz rację, nie chcę zakładać. Resetuję to, co zrozumiałem do tej pory. Powiedz mi własnymi słowami, co teraz w tobie jest — bez konieczności nazywania tego „poprawnie”.",
+  en: "Thank you for telling me — you're right, I shouldn't assume. I'm resetting what I thought I understood. Tell me in your own words what's actually going on inside you right now — no need to name it „correctly”.",
+  uk: "Дякую, що сказав(ла) це — твоя правда, не буду припускати. Скидаю те, що, як мені здавалося, я зрозумів. Розкажи своїми словами, що насправді зараз у тобі — не треба називати це „правильно”.",
+};
+
+function matchesMisread(text: string): boolean {
+  return MISREAD_PATTERNS.some((p) => p.test(text));
+}
 
 /** Zwraca tylko treść odpowiedzi — wygodnie do testów / prostych wywołań. */
 
 export async function sendMessageMock(history: ChatMessage[]): Promise<string> {
 
   const r = await sendChatMessage(history);
+
+  const last = history[history.length - 1]?.content ?? "";
+  const lang = i18n.language || "en";
+  if (matchesMisread(last)) {
+    const base = lang.split("-")[0];
+    return MISREAD_REPLIES[base] ?? MISREAD_REPLIES.pl;
+  }
 
   return r.assistant_reply;
 
