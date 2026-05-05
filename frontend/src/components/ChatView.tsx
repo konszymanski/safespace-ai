@@ -6,7 +6,11 @@ import ChatBubble from "./ChatBubble";
 import ChatComposer from "./ChatComposer";
 import ExportChatPrompt from "./ExportChatPrompt";
 import ThinkingBubble from "./ThinkingBubble";
-import { type ChatMessage, sendChatMessage } from "@/lib/mockApi";
+import {
+  type ChatMessage,
+  revokeCurrentChatSession,
+  sendChatMessage,
+} from "@/lib/mockApi";
 
 interface ChatViewProps {
   shreddingTick: number;
@@ -72,6 +76,7 @@ const ChatView = ({ shreddingTick }: ChatViewProps) => {
   useEffect(() => {
     if (shreddingTick === 0) return;
     setShredding(true);
+    void revokeCurrentChatSession();
     const timer = setTimeout(() => {
       setMessages([{ role: "assistant", content: pickStarter(t) }]);
       setUntouched(true);
