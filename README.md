@@ -131,3 +131,9 @@ VITE_API_BASE_URL=http://127.0.0.1:8001
 - Session state is not persistent (RAM only).
 - Some docs files are placeholders and do not yet reflect full behavior.
 - Safety heuristics are not a medical diagnosis and should not be treated as clinical decision support.
+
+## Used Dataset
+
+"Sentiment Analysis for Mental Health" imported from Kaggle platform
+
+`https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health`
