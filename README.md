@@ -88,6 +88,17 @@ Important: backend session memory is in RAM only and resets on server restart.
 - `GET /debug/crisis-state/{session_id}` - reads current crisis counters.
 - `DELETE /session/{session_id}` - clears in-memory state for a session.
 
+## Model Training
+Before running the application, you must generate the safety model artifact. The backend requires a trained classifier to perform risk scoring.
+
+1. Navigate to ```backend/ml/train/```.
+
+2. Open and run the ```train_safety_model.ipynb``` notebook.
+
+This will save the safety_model_tuned_bayes.pkl file to the required directory.
+
+Note: Ensure the .pkl file is present before building the Docker containers, as the backend will fail to initialize without it.
+
 ## Run with Docker (recommended)
 
 ### Clone the project
